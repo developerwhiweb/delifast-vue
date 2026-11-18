@@ -468,7 +468,11 @@
               @click="addToCart"
             >
               <span class="me-2 bi" :class="product?.isCombo ? 'bi-gift' : 'bi-cart-plus'"></span> 
-              {{ isEditing ? 'Atualizar' : (product?.isCombo ? 'Adicionar Combo' : 'Adicionar ao Carrinho') }}
+              {{
+                isRefreshingStock
+                  ? 'Verificando estoque...'
+                  : (isEditing ? 'Atualizar' : (product?.isCombo ? 'Adicionar Combo' : 'Adicionar ao Carrinho'))
+              }}
             </button>
           </div>
           <div v-if="!canAddMoreStock" class="col-12 small text-danger text-center text-break mt-2" role="status">
@@ -485,9 +489,11 @@
   import { ref, computed, watch, nextTick } from 'vue'
   import { useCartStore } from '@/stores/useCartStore'
   import { useToast } from 'vue-toastification'
+  import { refreshProductStocks } from '@/utils/productStock'
 
   const cart = useCartStore()
   const toast = useToast()
+  const isRefreshingStock = ref(false)
 
   const props = defineProps({
     show: Boolean,
@@ -686,13 +692,15 @@
       : cart.canAdd(props.product)
   })
 
-  const stockLimitMessage = computed(() => (
-    props.product?.stock?.control && Number(props.product.stock.quantity) <= 0
+  const stockLimitMessage = computed(() => {
+    const stock = cart.getProductStock(props.product)
+    return stock?.control && Number(stock.quantity) <= 0
       ? 'Produto esgotado.'
       : 'Limite atingido no carrinho.'
-  ))
+  })
     
   const canSubmit = computed(() => {
+    if (isRefreshingStock.value) return false
     if (!canAddMoreStock.value) return false
     if (isEditing.value) return true
     if (isCombo.value) {
@@ -1306,8 +1314,24 @@ const prepareComboForCart = () => {
 
 // No ProductModal.vue - Substitua a função addToCart e o watch
 
-function addToCart() {
-  if (!props.product) return
+async function addToCart() {
+  if (!props.product || isRefreshingStock.value) return
+
+  isRefreshingStock.value = true
+  try {
+    await refreshProductStocks(cart, props.product.id)
+
+    if (!canAddMoreStock.value) {
+      toast.warning(stockLimitMessage.value)
+      return
+    }
+  } catch (error) {
+    console.error('Não foi possível verificar o estoque do produto.', error)
+    toast.error('Não foi possível verificar o estoque. Tente novamente.')
+    return
+  } finally {
+    isRefreshingStock.value = false
+  }
 
   if (isCombo.value) {
     const comboItem = prepareComboForCart()

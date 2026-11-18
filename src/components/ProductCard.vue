@@ -76,9 +76,10 @@
 </template>
 
 <script setup>
-  import { computed } from 'vue'
+  import { computed, ref } from 'vue'
   import { useCartStore } from '@/stores/useCartStore'
   import { useToast } from 'vue-toastification'
+  import { refreshProductStocks } from '@/utils/productStock'
 
   const props = defineProps({
     product: Object
@@ -87,12 +88,16 @@
   const emit = defineEmits(['open', 'add'])
   const cart = useCartStore()
   const toast = useToast()
-  const canAddToCart = computed(() => cart.canAdd(props.product))
-  const stockLimitMessage = computed(() => (
-    props.product?.stock?.control && Number(props.product.stock.quantity) <= 0
+  const isRefreshingStock = ref(false)
+  const canAddToCart = computed(() => (
+    !isRefreshingStock.value && cart.canAdd(props.product)
+  ))
+  const stockLimitMessage = computed(() => {
+    const stock = cart.getProductStock(props.product)
+    return stock?.control && Number(stock.quantity) <= 0
       ? 'Esgotado'
       : 'Limite atingido'
-  ))
+  })
 
   // Verifica se é combo
   const isCombo = computed(() => {
@@ -203,21 +208,28 @@
     }
   }
 
-  const handleClick = () => {
-    if (!canAddToCart.value) {
-      toast.warning(stockLimitMessage.value)
-      return
-    }
+  const handleClick = async () => {
+    if (isRefreshingStock.value) return
 
-    if (hasCustomizations()) {
-      // Produto com personalizações OU combo -> abre modal
-      emit('open', props.product)
-    } else {
-      // Produto simples -> adiciona direto ao carrinho
-      const simpleProduct = prepareSimpleProduct()
-      cart.add(simpleProduct)
-      // Opcional: mostrar toast de sucesso
-      // toast.success(`${props.product.name} adicionado ao carrinho!`)
+    isRefreshingStock.value = true
+    try {
+      await refreshProductStocks(cart, props.product.id)
+
+      if (!cart.canAdd(props.product)) {
+        toast.warning(stockLimitMessage.value)
+        return
+      }
+
+      if (hasCustomizations()) {
+        emit('open', props.product)
+      } else {
+        cart.add(prepareSimpleProduct())
+      }
+    } catch (error) {
+      console.error('Não foi possível verificar o estoque do produto.', error)
+      toast.error('Não foi possível verificar o estoque. Tente novamente.')
+    } finally {
+      isRefreshingStock.value = false
     }
   }
 

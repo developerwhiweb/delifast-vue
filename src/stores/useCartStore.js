@@ -118,12 +118,23 @@ export const useCartStore = defineStore('cart', {
       }
     },
 
+    setProductStock(productId, stock) {
+      const key = String(productId)
+      this.productStock = { ...this.productStock, [key]: stock }
+
+      for (const item of this.items) {
+        if (getProductKey(item) === key) {
+          item.stock = stock
+        }
+      }
+    },
+
     getProductStock(product) {
       const productKey = getProductKey(product)
-      if (product?.stock) return product.stock
       if (productKey && this.productStock[productKey]) {
         return this.productStock[productKey]
       }
+      if (product?.stock) return product.stock
 
       return this.items.find((item) => (
         getProductKey(item) === productKey && item.stock

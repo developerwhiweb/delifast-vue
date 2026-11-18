@@ -490,6 +490,7 @@
     import { createOrder, getAddresses, getContacts, validateCoupon } from '@/services/api'
     import { createOrderWhatsAppUrl, formatOrderWhatsAppMessage } from '@/utils/orderWhatsApp'
     import { buildCouponValidationItem } from '@/utils/couponPayload'
+    import { refreshProductStocks, validateCartStock } from '@/utils/productStock'
 
     const toast = useToast()
     const cart = useCartStore()
@@ -1149,6 +1150,9 @@
             ? window.open('about:blank', '_blank')
             : null
         try {
+            const latestProducts = await refreshProductStocks(cart)
+            validateCartStock(cart.items, latestProducts)
+
             const response = await createOrder(orderData)
             const savedOrder = response.data?.data
             removeCoupon()
@@ -1186,7 +1190,11 @@
         } catch (error) {
             whatsappWindow?.close()
             console.error('Não foi possível salvar o pedido na API.', error)
-            toast.error(error.response?.data?.message || 'Não foi possível finalizar seu pedido.')
+            toast.error(
+                error.response?.data?.message
+                    || error.message
+                    || 'Não foi possível finalizar seu pedido.'
+            )
         } finally {
             isSubmitting.value = false
         }
