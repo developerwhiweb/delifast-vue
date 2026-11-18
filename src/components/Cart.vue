@@ -434,7 +434,8 @@
     import PaymentMethodModal from './PaymentMethodModal.vue'
     import { useCartStore } from '@/stores/useCartStore'
     import { useUserStore } from '@/stores/useUserStore'
-    import { createOrder, getAddresses } from '@/services/api'
+    import { createOrder, getAddresses, getContacts } from '@/services/api'
+    import { createOrderWhatsAppUrl, formatOrderWhatsAppMessage } from '@/utils/orderWhatsApp'
 
     const toast = useToast()
     const cart = useCartStore()
@@ -856,13 +857,43 @@
         }
 
         isSubmitting.value = true
+        const whatsappWindow = typeof window !== 'undefined'
+            ? window.open('about:blank', '_blank')
+            : null
         try {
-            await createOrder(orderData)
+            const response = await createOrder(orderData)
+            const savedOrder = response.data?.data
             cart.clear({ silent: true })
             toast.success('Pedido confirmado e salvo com sucesso!', {
                 timeout: 4000
             })
+
+            try {
+                const contacts = await getContacts()
+                const whatsappUrl = createOrderWhatsAppUrl(
+                    contacts[0]?.whatsapp,
+                    formatOrderWhatsAppMessage(orderData, savedOrder),
+                )
+
+                if (!whatsappUrl) {
+                    whatsappWindow?.close()
+                    toast.warning('Pedido salvo, mas o WhatsApp da loja não está cadastrado nos contatos.')
+                    return
+                }
+
+                if (whatsappWindow && !whatsappWindow.closed) {
+                    whatsappWindow.opener = null
+                    whatsappWindow.location.href = whatsappUrl
+                } else {
+                    window.location.assign(whatsappUrl)
+                }
+            } catch (error) {
+                whatsappWindow?.close()
+                console.error('O pedido foi salvo, mas não foi possível abrir o WhatsApp.', error)
+                toast.warning('Pedido salvo, mas não foi possível abrir o WhatsApp. Confira os contatos da loja.')
+            }
         } catch (error) {
+            whatsappWindow?.close()
             console.error('Não foi possível salvar o pedido na API.', error)
             toast.error(error.response?.data?.message || 'Não foi possível finalizar seu pedido.')
         } finally {
