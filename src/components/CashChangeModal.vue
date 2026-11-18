@@ -33,6 +33,7 @@
               <span class="input-group-text">R$</span>
               <input
                 id="cash-change-amount"
+                ref="amountInput"
                 v-model="amount"
                 class="form-control"
                 type="number"
@@ -73,7 +74,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -86,6 +87,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'change-confirmed'])
 const needsChange = ref(null)
 const amount = ref('')
+const amountInput = ref(null)
 
 const isAmountValid = computed(() => {
   const amountInCents = Math.round(Number(amount.value) * 100)
@@ -102,6 +104,13 @@ watch(() => props.modelValue, (isOpen) => {
   if (isOpen) {
     needsChange.value = null
     amount.value = ''
+  }
+})
+
+watch(needsChange, async (selected) => {
+  if (selected) {
+    await nextTick()
+    amountInput.value?.focus()
   }
 })
 

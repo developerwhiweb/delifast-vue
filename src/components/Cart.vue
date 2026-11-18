@@ -402,6 +402,12 @@
                 {{ isSubmitting ? 'Salvando pedido...' : 'Confirmar pedido ›' }}
             </button>
         </div>
+
+        <CashChangeModal
+            v-model="showCashChangeModal"
+            :total="cart.total"
+            @change-confirmed="handleCashChangeConfirmed"
+        />
     </div>
 
     <!-- Product Modal -->
@@ -423,11 +429,6 @@
         @payment-selected="handlePaymentMethodSelected"
     />
 
-    <CashChangeModal
-        v-model="showCashChangeModal"
-        :total="cart.total"
-        @change-confirmed="handleCashChangeConfirmed"
-    />
 </template>
 
 <script setup>
