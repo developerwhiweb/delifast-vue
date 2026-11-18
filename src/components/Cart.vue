@@ -217,7 +217,7 @@
             <div v-if="!canConfirm" class="mb-2 text-center">
                 <span class="badge bg-warning p-2 text-dark d-flex align-items-center justify-content-center gap-1">
                     <i class="bi bi-exclamation-triangle-fill"></i>
-                    Você precisa se cadastrar antes de confirmar o pedido!
+                    {{ getCanConfirmMessage() }}
                 </span>
             </div>
 
@@ -422,6 +422,12 @@
         :selected-value="selectedPaymentMethod"
         @payment-selected="handlePaymentMethodSelected"
     />
+
+    <CashChangeModal
+        v-model="showCashChangeModal"
+        :total="cart.total"
+        @change-confirmed="handleCashChangeConfirmed"
+    />
 </template>
 
 <script setup>
@@ -432,6 +438,7 @@
     import AddressModal from './AddressModal.vue'
     import DeliveryMethodModal from './DeliveryMethodModal.vue'
     import PaymentMethodModal from './PaymentMethodModal.vue'
+    import CashChangeModal from './CashChangeModal.vue'
     import { useCartStore } from '@/stores/useCartStore'
     import { useUserStore } from '@/stores/useUserStore'
     import { createOrder, getAddresses, getContacts } from '@/services/api'
@@ -444,10 +451,20 @@
     const showAddressModal = ref(false)
     const showDeliveryMethodModal = ref(false)
     const showPaymentMethodModal = ref(false)
+    const showCashChangeModal = ref(false)
     const selectedAddress = ref(null)
     const selectedDeliveryMethod = ref(null)
     const selectedPaymentMethod = ref('')
+    const cashChange = ref(null)
     const isSubmitting = ref(false)
+    const cashChangeStorageKey = 'selectedCashChange'
+    const isCashChangeValid = computed(() => {
+        if (selectedPaymentMethod.value !== 'cash') return true
+        if (!cashChange.value) return false
+        if (!cashChange.value.needsChange) return true
+
+        return Math.round(Number(cashChange.value.amount) * 100) > Math.round(cart.total * 100)
+    })
 
     // Product modal
     const showProductModal = ref(false)
@@ -487,11 +504,15 @@
     // Função para obter a descrição do método de pagamento
     const getPaymentMethodDescription = () => {
         if (!selectedPaymentMethod.value) return 'Selecione uma forma de pagamento'
+        if (selectedPaymentMethod.value === 'cash') {
+            if (!cashChange.value) return 'Informe se precisa de troco'
+            if (!cashChange.value.needsChange) return 'Não precisa de troco'
+            return `Troco para ${formatPrice(cashChange.value.amount)}`
+        }
         
         const descriptions = {
             card: 'Pagamento com cartão (débito ou crédito)',
-            pix: 'Pagamento via PIX',
-            cash: 'Pagamento em dinheiro'
+            pix: 'Pagamento via PIX'
         }
         return descriptions[selectedPaymentMethod.value] || ''
     }
@@ -588,8 +609,23 @@
     // Carregar método de pagamento salvo
     const loadSavedPaymentMethod = () => {
         const savedPayment = localStorage.getItem('selectedPaymentMethod')
-        if (savedPayment) {
-            selectedPaymentMethod.value = savedPayment
+        selectedPaymentMethod.value = savedPayment || ''
+
+        const savedCashChange = localStorage.getItem(cashChangeStorageKey)
+        if (savedCashChange) {
+            try {
+                cashChange.value = JSON.parse(savedCashChange)
+            } catch (error) {
+                console.error('Erro ao carregar a informação de troco:', error)
+                cashChange.value = null
+                localStorage.removeItem(cashChangeStorageKey)
+            }
+        } else {
+            cashChange.value = null
+        }
+
+        if (selectedPaymentMethod.value === 'cash' && !isCashChangeValid.value) {
+            showCashChangeModal.value = true
         }
     }
 
@@ -597,9 +633,23 @@
         selectedPaymentMethod.value = method
         localStorage.setItem('selectedPaymentMethod', method)
 
+        if (method === 'cash') {
+            cashChange.value = null
+            localStorage.removeItem(cashChangeStorageKey)
+            showCashChangeModal.value = true
+        } else {
+            cashChange.value = null
+            localStorage.removeItem(cashChangeStorageKey)
+        }
+
         toast.info(`Forma de pagamento selecionada: ${getPaymentMethodText()}`, {
             timeout: 3000
         })
+    }
+
+    const handleCashChangeConfirmed = (change) => {
+        cashChange.value = change
+        localStorage.setItem(cashChangeStorageKey, JSON.stringify(change))
     }
 
     const openAddressModal = () => {
@@ -726,8 +776,26 @@
         if (!selectedDeliveryMethod.value) return false
         if (selectedDeliveryMethod.value.value === 'delivery' && !selectedAddress.value) return false
         if (!selectedPaymentMethod.value) return false
+        if (selectedPaymentMethod.value === 'cash' && !isCashChangeValid.value) return false
         return true
     })
+
+    const getCanConfirmMessage = () => {
+        if (!userStore.isLogged) return 'Você precisa se identificar antes de confirmar o pedido.'
+        if (!cart.items.length) return 'Adicione ao menos um item ao carrinho.'
+        if (!selectedDeliveryMethod.value) return 'Selecione uma forma de entrega.'
+        if (selectedDeliveryMethod.value.value === 'delivery' && !selectedAddress.value) {
+            return 'Selecione um endereço de entrega.'
+        }
+        if (!selectedPaymentMethod.value) return 'Selecione uma forma de pagamento.'
+        if (selectedPaymentMethod.value === 'cash' && !cashChange.value) {
+            return 'Informe se precisa de troco.'
+        }
+        if (selectedPaymentMethod.value === 'cash' && !isCashChangeValid.value) {
+            return 'O valor informado para o troco deve ser maior que o total do pedido.'
+        }
+        return ''
+    }
 
     const handleIdentify = (data) => {
         showModal.value = false
@@ -745,7 +813,9 @@
         }
 
         if (e.key === 'selectedDeliveryMethod') loadSavedDeliveryMethod()
-        if (e.key === 'selectedPaymentMethod') loadSavedPaymentMethod()
+        if (['selectedPaymentMethod', cashChangeStorageKey].includes(e.key)) {
+            loadSavedPaymentMethod()
+        }
     }
 
     const handleCustomAddressUpdate = () => {
@@ -763,6 +833,9 @@
             selectedAddress.value = null
             selectedDeliveryMethod.value = null
             selectedPaymentMethod.value = ''
+            cashChange.value = null
+            showCashChangeModal.value = false
+            localStorage.removeItem(cashChangeStorageKey)
             localStorage.removeItem('addresses')
             localStorage.removeItem('selectedAddress')
         }
@@ -819,6 +892,10 @@
                 toast.warning('Por favor, selecione uma forma de pagamento antes de continuar!', {
                     timeout: 3000
                 })
+            } else if (selectedPaymentMethod.value === 'cash' && !cashChange.value) {
+                toast.warning('Informe se precisa de troco antes de continuar.')
+            } else if (selectedPaymentMethod.value === 'cash' && !isCashChangeValid.value) {
+                toast.warning('O valor informado para o troco deve ser maior que o total do pedido.')
             }
             return
         }
@@ -831,6 +908,12 @@
             delivery_method: selectedDeliveryMethod.value.value,
             delivery_details: selectedDeliveryMethod.value,
             payment_method: selectedPaymentMethod.value,
+            cash_change: selectedPaymentMethod.value === 'cash' ? cashChange.value : null,
+            notes: selectedPaymentMethod.value === 'cash'
+                ? cashChange.value.needsChange
+                    ? `Troco para ${formatPrice(cashChange.value.amount)}`
+                    : 'Não precisa de troco.'
+                : null,
             address_id: selectedDeliveryMethod.value.value === 'delivery'
                 ? selectedAddress.value.id
                 : null,
@@ -864,6 +947,8 @@
             const response = await createOrder(orderData)
             const savedOrder = response.data?.data
             cart.clear({ silent: true })
+            cashChange.value = null
+            localStorage.removeItem(cashChangeStorageKey)
             toast.success('Pedido confirmado e salvo com sucesso!', {
                 timeout: 4000
             })

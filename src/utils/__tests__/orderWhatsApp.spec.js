@@ -104,4 +104,24 @@ describe('order WhatsApp message', () => {
       .toBe('https://wa.me/5571999991234?text=Pedido%20confirmado')
     expect(createOrderWhatsAppUrl('', 'Pedido confirmado')).toBeNull()
   })
+
+  it('includes the cash tender amount and calculated change in the message', () => {
+    const orderData = {
+      customer: { name: 'Ana' },
+      payment_method: 'cash',
+      cash_change: { needsChange: true, amount: 100 },
+      total: 45.5,
+      items: [],
+    }
+
+    const message = formatOrderWhatsAppMessage(orderData, { number: 'PED-456' })
+
+    expect(message).toContain('💳 *Pagamento:* Dinheiro')
+    expect(message).toContain('💵 *Troco para:* R$ 100,00')
+    expect(message).toContain('Troco a devolver: R$ 54,50')
+
+    orderData.cash_change = { needsChange: false, amount: null }
+    expect(formatOrderWhatsAppMessage(orderData, { number: 'PED-456' }))
+      .toContain('💵 *Troco:* Não precisa de troco')
+  })
 })

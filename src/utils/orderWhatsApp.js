@@ -267,9 +267,20 @@ export const formatOrderWhatsAppMessage = (orderData, savedOrder) => {
     if (address) lines.push(`Endereço: ${address}`)
     lines.push(
         `💳 *Pagamento:* ${paymentMethod || 'Não informado'}`,
-        '',
-        'Obrigado pelo pedido! ❤️',
     )
+    if (orderData.payment_method === 'cash') {
+        const cashChange = orderData.cash_change
+        if (cashChange?.needsChange) {
+            const changeToReturn = Number(cashChange.amount) - Number(orderData.total)
+            lines.push(
+                `💵 *Troco para:* ${formatPrice(cashChange.amount)}`,
+                `Troco a devolver: ${formatPrice(changeToReturn)}`,
+            )
+        } else {
+            lines.push('💵 *Troco:* Não precisa de troco')
+        }
+    }
+    lines.push('', 'Obrigado pelo pedido! ❤️')
 
     return lines.join('\n')
 }
