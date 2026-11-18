@@ -22,6 +22,7 @@
     import ProductList from '@/components/ProductList.vue'
     import Announcement from '@/components/Announcement.vue'
     import Cart from '@/components/Cart.vue'
+    import DesktopCartSummary from '@/components/DesktopCartSummary.vue'
     import ProductModal from '@/components/ProductModal.vue'
     import ProductSearch from '@/components/ProductSearch.vue'
     import MobileBottomMenu from '@/components/MobileBottomMenu.vue'
@@ -588,6 +589,7 @@
     />
     
     <Cart />
+    <DesktopCartSummary />
 
     <div class="layout">
       <main class="main">
