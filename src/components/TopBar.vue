@@ -156,9 +156,16 @@
     <!-- INFORMAÇÕES DO USUÁRIO (se logado) -->
     <div v-if="userStore.isLogged" class="user-info-mobile p-3 d-flex justify-content-center align-items-center text-start mb-2">
       <div class="avatar-mobile me-2">
-        <i class="bi bi-person-circle display-1"></i>
+        <img
+          v-if="userAvatarUrl && !avatarImageFailed"
+          :src="userAvatarUrl"
+          :alt="`Foto de perfil de ${userStore.fullName || 'Usuário'}`"
+          class="avatar-mobile-image"
+          @error="handleAvatarImageError"
+        >
+        <i v-else class="bi bi-person-circle" aria-hidden="true"></i>
       </div>
-      <div class="col-11">
+      <div class="user-details">
         <h6 class="mb-0">{{ userStore.fullName || 'Usuário' }}</h6>
         <small class="text-muted">{{ userStore.whatsapp || 'Telefone não informado' }}</small>
       </div>
@@ -267,45 +274,44 @@
     </div>
 
     <!-- CONTATO -->
-    <div class="menu-section">
+    <div v-if="contactChannels.length" class="menu-section">
       <div class="section-title mb-2">
         <i class="bi bi-headset me-2"></i>
         <span>Atendimento</span>
       </div>
       <div class="menu-links d-flex flex-column gap-2">
-        <a href="tel:+5585999999999" class="menu-link-btn">
-          <i class="bi bi-telephone me-3"></i>
-          <span>(85) 99999-9999</span>
-        </a>
-        <a href="https://wa.me/5585999999999" target="_blank" class="menu-link-btn">
-          <i class="bi bi-whatsapp me-3"></i>
-          <span>WhatsApp</span>
-        </a>
-        <a href="mailto:contato@oxenteacai.com.br" class="menu-link-btn">
-          <i class="bi bi-envelope me-3"></i>
-          <span>contato@oxenteacai.com.br</span>
+        <a
+          v-for="channel in contactChannels"
+          :key="channel.key"
+          :href="channel.href"
+          :target="channel.external ? '_blank' : null"
+          :rel="channel.external ? 'noopener noreferrer' : null"
+          class="menu-link-btn"
+        >
+          <i :class="['bi', channel.icon, 'me-3']"></i>
+          <span>{{ channel.label }}: {{ channel.value }}</span>
         </a>
       </div>
     </div>
 
     <!-- REDES SOCIAIS -->
-    <div class="menu-section">
+    <div v-if="socialNetworks.length" class="menu-section">
       <div class="section-title mb-2">
         <i class="bi bi-share me-2"></i>
         <span>Redes Sociais</span>
       </div>
       <div class="social-icons d-flex gap-3 justify-content-center">
-        <a href="#" target="_blank" class="social-icon">
-          <i class="bi bi-instagram fs-4"></i>
-        </a>
-        <a href="#" target="_blank" class="social-icon">
-          <i class="bi bi-facebook fs-4"></i>
-        </a>
-        <a href="#" target="_blank" class="social-icon">
-          <i class="bi bi-tiktok fs-4"></i>
-        </a>
-        <a href="#" target="_blank" class="social-icon">
-          <i class="bi bi-youtube fs-4"></i>
+        <a
+          v-for="network in socialNetworks"
+          :key="network.key"
+          :href="network.href"
+          :aria-label="network.label"
+          :title="network.label"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="social-icon"
+        >
+          <i :class="['bi', network.icon, 'fs-4']" aria-hidden="true"></i>
         </a>
       </div>
     </div>
@@ -356,7 +362,7 @@
 </template>
 
 <script setup>
-  import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
+  import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
   import { useCartStore } from '@/stores/useCartStore'
   import { useUserStore } from '@/stores/useUserStore'
   import { useToast } from 'vue-toastification'
@@ -379,12 +385,87 @@
     description: 'Praticidade que alimenta.',
     primary_color: '#10513D',
   })
+  const contactDetails = ref(null)
   const openingHours = ref([])
   const openingHoursLoaded = ref(false)
   const currentTime = ref(new Date())
   let statusInterval
 
   const groupedOpeningHours = computed(() => groupOpeningHours(openingHours.value))
+  const contactChannels = computed(() => {
+    const contact = contactDetails.value
+    if (!contact) return []
+
+    const channels = []
+    const phone = typeof contact.phone_one === 'string' ? contact.phone_one.trim() : ''
+    const phoneDigits = phone.replace(/\D/g, '')
+    if (phone && phoneDigits) {
+      channels.push({
+        key: 'phone',
+        label: 'Telefone',
+        value: phone,
+        href: `tel:${phoneDigits}`,
+        icon: 'bi-telephone',
+        external: false,
+      })
+    }
+
+    const whatsapp = typeof contact.whatsapp === 'string' ? contact.whatsapp.trim() : ''
+    const whatsappDigits = whatsapp.replace(/\D/g, '')
+    if (whatsapp && whatsappDigits) {
+      const internationalNumber = [10, 11].includes(whatsappDigits.length)
+        ? `55${whatsappDigits}`
+        : whatsappDigits
+      channels.push({
+        key: 'whatsapp',
+        label: 'WhatsApp',
+        value: whatsapp,
+        href: `https://wa.me/${internationalNumber}`,
+        icon: 'bi-whatsapp',
+        external: true,
+      })
+    }
+
+    const email = typeof contact.name_one === 'string' ? contact.name_one.trim() : ''
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      channels.push({
+        key: 'email',
+        label: 'E-mail',
+        value: email,
+        href: `mailto:${encodeURIComponent(email)}`,
+        icon: 'bi-envelope',
+        external: false,
+      })
+    }
+
+    return channels
+  })
+  const socialNetworks = computed(() => {
+    const contact = contactDetails.value
+    if (!contact) return []
+
+    const networks = [
+      { key: 'instagram', label: 'Instagram', icon: 'bi-instagram', value: contact.link_insta },
+      { key: 'facebook', label: 'Facebook', icon: 'bi-facebook', value: contact.link_face },
+      { key: 'x', label: 'X', icon: 'bi-twitter-x', value: contact.link_x },
+      { key: 'tiktok', label: 'TikTok', icon: 'bi-tiktok', value: contact.link_tik_tok },
+      { key: 'youtube', label: 'YouTube', icon: 'bi-youtube', value: contact.link_youtube },
+    ]
+
+    return networks.flatMap((network) => {
+      if (typeof network.value !== 'string' || !network.value.trim()) return []
+
+      const rawUrl = network.value.trim()
+      const candidateUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`
+      try {
+        const url = new URL(candidateUrl)
+        if (!['http:', 'https:'].includes(url.protocol)) return []
+        return [{ ...network, href: url.href }]
+      } catch {
+        return []
+      }
+    })
+  })
   const storeIsOpen = computed(() => isStoreOpenAt(openingHours.value, currentTime.value))
   const storeStatusLabel = computed(() => {
     if (!openingHoursLoaded.value) return 'Carregando horário'
@@ -411,13 +492,14 @@
   const loadOpeningHours = async () => {
     try {
       const contacts = await getContacts()
-      const schedule = contacts[0]?.opening_hours
+      contactDetails.value = contacts[0] || null
 
       if (!contacts.length) {
         openingHours.value = []
         return
       }
 
+      const schedule = contactDetails.value.opening_hours
       if (!Array.isArray(schedule) || schedule.length !== 7) {
         throw new Error('A resposta de /contacts não contém os horários dos sete dias.')
       }
@@ -455,11 +537,31 @@
   const showModal = ref(false)
   const showAddressModal = ref(false)
   const showOrderHistoryModal = ref(false)
+  const avatarImageFailed = ref(false)
 
   // Computed para verificar se o usuário está logado e tem ID
   const isUserReady = computed(() => {
     return userStore.isLogged && userStore.userId
   })
+  const userAvatarUrl = computed(() => {
+    const path = typeof userStore.pathImage === 'string' ? userStore.pathImage.trim() : ''
+    if (!path) return ''
+
+    try {
+      return resolveApiAssetUrl(path)
+    } catch (error) {
+      console.error('Não foi possível resolver a imagem do perfil.', error)
+      return ''
+    }
+  })
+
+  watch(userAvatarUrl, () => {
+    avatarImageFailed.value = false
+  })
+
+  const handleAvatarImageError = () => {
+    avatarImageFailed.value = true
+  }
 
   // ========== FUNÇÃO HANDLE REORDER ==========
   const handleReorder = (order) => {
@@ -817,8 +919,32 @@
     color: #1f2937;
   }
 
-  .user-info-mobile i {
+  .avatar-mobile {
+    width: 56px;
+    height: 56px;
+    flex: 0 0 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 50%;
+    background: #f8f9fa;
+  }
+
+  .avatar-mobile-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .avatar-mobile i {
     color: var(--bg-ccc);
+    font-size: 2.5rem;
+  }
+
+  .user-details {
+    flex: 1;
+    min-width: 0;
   }
 
   .section-title {

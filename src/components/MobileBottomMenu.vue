@@ -11,7 +11,14 @@
         :data-bs-target="item.key === 'delivery' ? '#cartCanvas' : null"
       >
         <div class="position-relative">
-          <i :class="item.icon"></i>
+          <img
+            v-if="item.key === 'profile' && userStore.isLogged && userAvatarUrl && !avatarImageFailed"
+            :src="userAvatarUrl"
+            :alt="`Foto de perfil de ${userStore.fullName || 'Usuário'}`"
+            class="profile-avatar"
+            @error="handleAvatarImageError"
+          >
+          <i v-else :class="item.icon"></i>
 
           <!-- Badge do carrinho -->
           <span 
@@ -37,12 +44,13 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useCartStore } from '@/stores/useCartStore'
 import { useUserStore } from '@/stores/useUserStore'
 import { useToast } from 'vue-toastification'
 import ProfileModal from '@/components/Profile.vue'
 import IdentifyModal from './IdentifyModal.vue'
+import { resolveApiAssetUrl } from '@/services/api'
 
 const emit = defineEmits(['change', 'open-orders', 'profile-updated'])
 
@@ -54,6 +62,27 @@ const active = ref('orders')
 const isOpeningCart = ref(false)
 const showProfileModal = ref(false)
 const showLoginModal = ref(false)
+const avatarImageFailed = ref(false)
+
+const userAvatarUrl = computed(() => {
+  const path = typeof userStore.pathImage === 'string' ? userStore.pathImage.trim() : ''
+  if (!path) return ''
+
+  try {
+    return resolveApiAssetUrl(path)
+  } catch (error) {
+    console.error('Não foi possível resolver a imagem do perfil.', error)
+    return ''
+  }
+})
+
+watch(userAvatarUrl, () => {
+  avatarImageFailed.value = false
+})
+
+const handleAvatarImageError = () => {
+  avatarImageFailed.value = true
+}
 
 const items = [
   { key: 'home', icon: 'bi bi-house', label: 'Início' },
@@ -245,5 +274,13 @@ const handleLoginSuccess = (userData) => {
 
 .menu-item i {
   font-size: 1.2rem;
+}
+
+.profile-avatar {
+  display: block;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 </style>
