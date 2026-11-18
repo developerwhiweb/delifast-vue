@@ -12,10 +12,11 @@ describe('CashChangeModal', () => {
     const confirmButton = wrapper.find('.modal-footer .btn-primary')
     expect(confirmButton.attributes('disabled')).toBeDefined()
 
-    await wrapper.find('#cash-change-amount').setValue('25')
+    await wrapper.find('#cash-change-amount').setValue('2500')
     expect(confirmButton.attributes('disabled')).toBeDefined()
 
-    await wrapper.find('#cash-change-amount').setValue('50')
+    await wrapper.find('#cash-change-amount').setValue('5000')
+    expect(wrapper.find('#cash-change-amount').element.value).toBe('50,00')
     expect(confirmButton.attributes('disabled')).toBeUndefined()
     await confirmButton.trigger('click')
 

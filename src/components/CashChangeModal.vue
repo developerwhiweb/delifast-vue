@@ -34,13 +34,13 @@
               <input
                 id="cash-change-amount"
                 ref="amountInput"
-                v-model="amount"
+                :value="amount"
                 class="form-control"
-                type="number"
-                min="0"
-                step="0.01"
+                type="text"
                 inputmode="decimal"
-                placeholder="Ex.: 100,00"
+                autocomplete="off"
+                placeholder="0,00"
+                @input="handleAmountInput"
               >
             </div>
             <small class="text-muted d-block mt-1">
@@ -50,7 +50,7 @@
               Informe um valor maior que o total do pedido.
             </small>
             <small v-else-if="isAmountValid" class="text-success" role="status">
-              Troco: {{ formatPrice(Number(amount) - Number(total)) }}
+              Troco: {{ formatPrice(amountInCents / 100 - Number(total)) }}
             </small>
           </div>
         </div>
@@ -87,12 +87,12 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'change-confirmed'])
 const needsChange = ref(null)
 const amount = ref('')
+const amountInCents = ref(0)
 const amountInput = ref(null)
 
 const isAmountValid = computed(() => {
-  const amountInCents = Math.round(Number(amount.value) * 100)
   const totalInCents = Math.round(Number(props.total) * 100)
-  return Number.isFinite(amountInCents) && amountInCents > totalInCents
+  return Number.isFinite(amountInCents.value) && amountInCents.value > totalInCents
 })
 
 const formatPrice = (value) => new Intl.NumberFormat('pt-BR', {
@@ -100,10 +100,22 @@ const formatPrice = (value) => new Intl.NumberFormat('pt-BR', {
   currency: 'BRL',
 }).format(Number(value) || 0)
 
+const formatMaskedAmount = (cents) => new Intl.NumberFormat('pt-BR', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+}).format(cents / 100)
+
+const handleAmountInput = (event) => {
+  const digits = event.target.value.replace(/\D/g, '')
+  amountInCents.value = digits ? Number(digits) : 0
+  amount.value = digits ? formatMaskedAmount(amountInCents.value) : ''
+}
+
 watch(() => props.modelValue, (isOpen) => {
   if (isOpen) {
     needsChange.value = null
     amount.value = ''
+    amountInCents.value = 0
   }
 })
 
@@ -121,7 +133,7 @@ const confirm = () => {
 
   emit('change-confirmed', {
     needsChange: needsChange.value,
-    amount: needsChange.value ? Number(amount.value) : null,
+    amount: needsChange.value ? amountInCents.value / 100 : null,
   })
   close()
 }
