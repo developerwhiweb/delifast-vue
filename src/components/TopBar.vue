@@ -575,104 +575,79 @@
   // Função para fechar o offcanvas CORRETAMENTE
   const closeOffcanvas = () => {
     const offcanvasElement = document.getElementById('mobileMenu')
-    if (!offcanvasElement) return
-    
-    // Verifica se tem uma instância do Bootstrap
-    if (window.bootstrap && window.bootstrap.Offcanvas) {
-      const offcanvas = window.bootstrap.Offcanvas.getInstance(offcanvasElement)
-      if (offcanvas) {
-        offcanvas.hide()
-      }
+
+    if (!offcanvasElement || !offcanvasElement.classList.contains('show')) {
+      return Promise.resolve()
     }
-    
-    // Remove qualquer backdrop remanescente
-    const backdrop = document.querySelector('.offcanvas-backdrop')
-    if (backdrop) {
-      backdrop.remove()
+
+    const closeButton = offcanvasElement.querySelector('[data-bs-dismiss="offcanvas"]')
+    if (!closeButton) {
+      return Promise.reject(new Error('Não foi encontrado o botão para fechar o menu mobile.'))
     }
-    
-    // Restaura o body
-    document.body.classList.remove('offcanvas-open')
-    document.body.style.overflow = ''
-    document.body.style.paddingRight = ''
+
+    return new Promise((resolve) => {
+      offcanvasElement.addEventListener('hidden.bs.offcanvas', resolve, { once: true })
+      closeButton.click()
+    })
   }
 
-  // Abrir modal de endereços - VERSÃO CORRIGIDA
-  const openAddressModal = () => {
-    // Fecha o offcanvas primeiro
-    closeOffcanvas()
-    // Pequeno delay para garantir que fechou
-    setTimeout(() => {
-      showAddressModal.value = true
-    }, 150)
+  const openAddressModal = async () => {
+    await closeOffcanvas()
+    showAddressModal.value = true
   }
 
   // Abrir modal de perfil
-  const openProfileModal = () => {
-    closeOffcanvas()
+  const openProfileModal = async () => {
+    await closeOffcanvas()
     if (!userStore.isLogged) {
       toast.warning('Faça login para acessar seu perfil!', { timeout: 3000 })
       showModal.value = true
       return
     }
 
-    setTimeout(() => {
-      showProfileModal.value = true
-    }, 150)
+    showProfileModal.value = true
   }
 
-  // Abrir modal de locais de entrega
-  const openLocationModal = () => {
-    closeOffcanvas()
-    setTimeout(() => {
-      showModalLocation.value = true
-    }, 150)
+  const openLocationModal = async () => {
+    await closeOffcanvas()
+    showModalLocation.value = true
   }
 
   // Abrir modal de login
-  const openLoginModal = () => {
-    closeOffcanvas()
-    setTimeout(() => {
-      showModal.value = true
-    }, 150)
+  const openLoginModal = async () => {
+    await closeOffcanvas()
+    showModal.value = true
   }
 
   // Abrir histórico de pedidos
-  const openOrderHistoryMobile = () => {
-    closeOffcanvas()
-    
-    setTimeout(() => {
-      if (!userStore.isLogged) {
-        toast.warning('Faça login para ver seus pedidos!', { timeout: 3000 })
-        showModal.value = true
-        return
-      }
-      
-      if (!userStore.userId) {
-        toast.error('Erro ao carregar dados do usuário. Por favor, faça login novamente.', { timeout: 4000 })
-        userStore.logout()
-        showModal.value = true
-        return
-      }
-      
-      showOrderHistoryModal.value = true
-    }, 150)
+  const openOrderHistoryMobile = async () => {
+    await closeOffcanvas()
+    if (!userStore.isLogged) {
+      toast.warning('Faça login para ver seus pedidos!', { timeout: 3000 })
+      showModal.value = true
+      return
+    }
+
+    if (!userStore.userId) {
+      toast.error('Erro ao carregar dados do usuário. Por favor, faça login novamente.', { timeout: 4000 })
+      userStore.logout()
+      showModal.value = true
+      return
+    }
+
+    showOrderHistoryModal.value = true
   }
 
   // Navegação
-  const closeOffcanvasAndNavigate = (page) => {
-    closeOffcanvas()
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('mobile-navigation', { detail: { page } }))
-    }, 200)
+  const closeOffcanvasAndNavigate = async (page) => {
+    await closeOffcanvas()
+    window.dispatchEvent(new CustomEvent('mobile-navigation', { detail: { page } }))
   }
 
   // Logout mobile
-  const logoutMobile = () => {
-    closeOffcanvas()
-    setTimeout(() => {
-      logout()
-    }, 150)
+  const logoutMobile = async () => {
+    await closeOffcanvas()
+    logout()
   }
 
   const handleProfileUpdate = (updatedProfile) => {

@@ -207,12 +207,6 @@
                 </div>
             </div>
 
-            <!-- Address Modal -->
-            <AddressModal
-                v-model="showAddressModal"
-                @address-selected="handleAddressSelected"
-            />
-                            
             <!-- Badge de Warning -->
             <div v-if="!canConfirm" class="mb-2 text-center">
                 <span class="badge bg-warning p-2 text-dark d-flex align-items-center justify-content-center gap-1">
@@ -408,18 +402,22 @@
             :total="cart.total"
             @change-confirmed="handleCashChangeConfirmed"
         />
+
+        <AddressModal
+            v-model="showAddressModal"
+            @address-selected="handleAddressSelected"
+        />
+
+        <DeliveryMethodModal
+            v-model="showDeliveryMethodModal"
+            @method-selected="handleDeliveryMethodSelected"
+        />
     </div>
 
     <!-- Product Modal -->
     <ProductModal
         v-model:show="showProductModal"
         :product="selectedProduct"
-    />
-
-    <!-- Delivery Method Modal -->
-    <DeliveryMethodModal
-        v-model="showDeliveryMethodModal"
-        @method-selected="handleDeliveryMethodSelected"
     />
 
     <!-- Payment Method Modal -->
