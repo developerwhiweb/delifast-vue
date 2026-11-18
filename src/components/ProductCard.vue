@@ -58,7 +58,7 @@
               <span class="ms-1 text-primary">+</span>
             </button>
           </div>
-          <div v-if="!canAddToCart" class="stock-limit-message" role="status">
+          <div v-if="!canAddToCart && !isRefreshingStock" class="stock-limit-message" role="status">
             <svg
               class="stock-limit-icon"
               xmlns="http://www.w3.org/2000/svg"
