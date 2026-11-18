@@ -55,7 +55,7 @@
               <template v-else>
               <div class="order-summary">
                 <div class="summary-item 1">
-                  <strong>Total:</strong> 
+                  <strong>Total pago:</strong> 
                   <span class="ms-2 order-total">{{ formatCurrency(order.total) }}</span>
                 </div>
                 <div class="summary-item mb-1">
