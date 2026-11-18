@@ -64,12 +64,13 @@
 
       <!-- Campo de busca -->
       <div class=" d-none d-md-block position-relative flex-grow-1 search-wrapper mt-0">
-        <input
-          type="text"
-          placeholder="Buscar produto..."
-          class="form-control p-0 ps-3 height-35 input-search"
+        <ProductSearch
+          mode="desktop"
+          :products="props.products"
+          :loading="props.catalogLoading"
+          :error="props.catalogError"
+          @select="emit('open-product', $event)"
         />
-        <i class="bi bi-search bg-primary position-absolute d-flex justify-content-center align-items-center top-50 end-0 translate-middle-y m-0 text-white height-35 search-icon"></i>
       </div>
 
       <!-- Ícones -->
@@ -211,7 +212,7 @@
 
         <button 
           class="menu-link-btn"
-          @click="closeOffcanvasAndNavigate('search')"
+          @click="openMobileSearch"
         >
           <i class="bi bi-search me-3 bg-transparent"></i>
           <span>Buscar produtos</span>
@@ -371,6 +372,7 @@
   import DeliveryLocations from '@/components/DeliveryLocations.vue'
   import OrderHistoryModal from '@/components/OrderHistoryModal.vue'
   import ProfileModal from '@/components/Profile.vue'
+  import ProductSearch from '@/components/ProductSearch.vue'
   import fallbackLogo from '@/assets/images/logo.png'
   import { getContacts, getTenantConfig, resolveApiAssetUrl } from '@/services/api'
   import { groupOpeningHours, isStoreOpenAt } from '@/utils/openingHours'
@@ -378,7 +380,22 @@
   const toast = useToast()
   const cartStore = useCartStore()
   const userStore = useUserStore()
-  const emit = defineEmits(['startup-ready'])
+  const props = defineProps({
+    products: {
+      type: Array,
+      default: () => [],
+    },
+    catalogLoading: {
+      type: Boolean,
+      default: false,
+    },
+    catalogError: {
+      type: Boolean,
+      default: false,
+    },
+  })
+
+  const emit = defineEmits(['startup-ready', 'open-product', 'open-search'])
   const tenantConfig = ref({
     path_image_logo_header: null,
     name: 'Oxente Açaiteria',
@@ -746,6 +763,11 @@
     window.dispatchEvent(new CustomEvent('mobile-navigation', { detail: { page } }))
   }
 
+  const openMobileSearch = async () => {
+    await closeOffcanvas()
+    emit('open-search')
+  }
+
   // Logout mobile
   const logoutMobile = async () => {
     await closeOffcanvas()
@@ -859,11 +881,6 @@
     cursor: pointer;
   }
 
-  .input-search {
-    border-color: var(--primary);
-    width: 100%;
-  }
-
   .height-35 {
     height: 35px;
   }
@@ -872,11 +889,6 @@
     min-width: 180px;
     max-width: 360px;
     width: 100%;
-  }
-
-  .search-icon {
-    border-radius: 0 5px 5px 0;
-    width: 45px;
   }
 
   .horous-day {
@@ -1078,7 +1090,7 @@
     .d-flex.justify-content-center.justify-content-md-start.align-items-center.mt-0.mt-md-2 small{
       font-size: 0.75rem !important;
     }
-    .font-12, .form-control.p-0.ps-3.height-35.input-search{
+    .font-12{
       font-size: 0.75rem;
     }
     .image {

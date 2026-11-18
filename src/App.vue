@@ -23,6 +23,7 @@
     import Announcement from '@/components/Announcement.vue'
     import Cart from '@/components/Cart.vue'
     import ProductModal from '@/components/ProductModal.vue'
+    import ProductSearch from '@/components/ProductSearch.vue'
     import MobileBottomMenu from '@/components/MobileBottomMenu.vue'
     import OrderHistoryModal from '@/components/OrderHistoryModal.vue'
     import IdentifyModal from '@/components/IdentifyModal.vue'
@@ -36,6 +37,9 @@
     // Estados do modal
     const showProductModal = ref(false)
     const selectedProduct = ref(null)
+    const showMobileSearch = ref(false)
+    const catalogLoading = ref(true)
+    const catalogError = ref(false)
     const showOrderHistoryModal = ref(false)
     const showLoginModal = ref(false)
     const hasAnnouncements = ref(null)
@@ -335,7 +339,11 @@
     }
 
     const handleMenuChange = (key) => {
-      // Lógica para outros itens do menu (home, search, delivery, profile)
+      if (key === 'search') {
+        showMobileSearch.value = true
+        return
+      }
+
       console.log('Menu alterado:', key)
     }
 
@@ -391,8 +399,10 @@
       try {
         await loadCatalog()
       } catch (error) {
+        catalogError.value = true
         console.error('Nao foi possivel carregar o catalogo da API.', error)
       } finally {
+        catalogLoading.value = false
         if (!highlights.value.length) markStartupReady('topAnnouncements')
       }
     })
@@ -567,6 +577,15 @@
     <MobileBottomMenu 
     @change="handleMenuChange" 
     @open-orders="openOrderHistory"/>
+
+    <ProductSearch
+      v-model="showMobileSearch"
+      mode="mobile"
+      :products="products"
+      :loading="catalogLoading"
+      :error="catalogError"
+      @select="openProductModal"
+    />
     
     <Cart />
 
@@ -575,7 +594,14 @@
 
         <!-- Topo CONTIDO -->
         <div class="container">
-          <TopBar @startup-ready="markStartupReady('tenant')" />
+          <TopBar
+            :products="products"
+            :catalog-loading="catalogLoading"
+            :catalog-error="catalogError"
+            @startup-ready="markStartupReady('tenant')"
+            @open-product="openProductModal"
+            @open-search="showMobileSearch = true"
+          />
         </div>
 
         <div class="container py-0">
