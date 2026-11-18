@@ -20,8 +20,8 @@
           <div v-if="userStore.isLogged" class="text-center">
             <p class="mb-1">{{ userStore.fullName }}</p>
             <small class="d-block text-muted mb-3">{{ userStore.whatsapp }}</small>
-            <button class="btn btn-outline-danger w-100" :disabled="isLoading" @click="logout">
-              {{ isLoading ? 'Saindo...' : 'Sair da conta' }}
+            <button class="btn btn-outline-danger w-100" :disabled="isLoggingOut" @click="logout">
+              {{ isLoggingOut ? 'Saindo...' : 'Sair da conta' }}
             </button>
           </div>
 
@@ -91,6 +91,7 @@ const userStore = useUserStore()
 const name = ref('')
 const phone = ref('')
 const isLoading = ref(false)
+const isLoggingOut = ref(false)
 const errorMessage = ref('')
 
 const close = () => {
@@ -159,16 +160,16 @@ const login = async () => {
 }
 
 const logout = async () => {
-  if (isLoading.value) return
+  if (isLoggingOut.value) return
 
-  isLoading.value = true
+  isLoggingOut.value = true
   try {
-    await userStore.logout()
+    const logoutRequest = userStore.logout()
     toast.info('Você saiu da sua conta.')
-    isLoading.value = false
     close()
+    await logoutRequest
   } finally {
-    isLoading.value = false
+    isLoggingOut.value = false
   }
 }
 

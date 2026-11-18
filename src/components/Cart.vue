@@ -623,9 +623,6 @@
             cashChange.value = null
         }
 
-        if (selectedPaymentMethod.value === 'cash' && !isCashChangeValid.value) {
-            showCashChangeModal.value = true
-        }
     }
 
     const handlePaymentMethodSelected = (method) => {
@@ -891,10 +888,8 @@
                 toast.warning('Por favor, selecione uma forma de pagamento antes de continuar!', {
                     timeout: 3000
                 })
-            } else if (selectedPaymentMethod.value === 'cash' && !cashChange.value) {
-                toast.warning('Informe se precisa de troco antes de continuar.')
             } else if (selectedPaymentMethod.value === 'cash' && !isCashChangeValid.value) {
-                toast.warning('O valor informado para o troco deve ser maior que o total do pedido.')
+                showCashChangeModal.value = true
             }
             return
         }

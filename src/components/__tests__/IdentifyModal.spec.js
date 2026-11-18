@@ -72,4 +72,29 @@ describe('IdentifyModal', () => {
     expect(wrapper.find('[role="alert"]').text()).toBe('Telefone já associado a outro nome.')
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
   })
+
+  it('closes promptly on logout without showing the login loading label', async () => {
+    userStore.login({
+      id: 7,
+      fullName: 'Maria Silva',
+      whatsapp: '(11) 99999-9999',
+    })
+
+    let finishLogout
+    vi.spyOn(userStore, 'logout').mockImplementation(() => {
+      userStore.$reset()
+      return new Promise((resolve) => {
+        finishLogout = resolve
+      })
+    })
+
+    await wrapper.vm.$nextTick()
+    await wrapper.get('.btn-outline-danger').trigger('click')
+
+    expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
+    expect(wrapper.text()).not.toContain('Entrando...')
+
+    finishLogout()
+    await flushPromises()
+  })
 })
