@@ -496,24 +496,46 @@
     const couponError = ref('')
     const isValidatingCoupon = ref(false)
     const couponItems = computed(() => {
-        const quantities = new Map()
-
-        for (const item of cart.items) {
+        return cart.items.map((item) => {
             const rawProductId = item.productId ?? item.originalProductId ?? item.id
             const productId = Number(rawProductId)
-            const key = Number.isSafeInteger(productId) && productId > 0
-                ? `id:${productId}`
-                : `invalid:${String(rawProductId ?? '')}`
+            const options = item.selectedOptions || {}
+            const selectedOptions = Object.fromEntries(
+                Object.entries(options).map(([key, selection]) => {
+                    const group = (item.options || []).find((option, index) => (
+                        String(option.id ?? option.title ?? index) === String(key)
+                    ))
+                    return [String(group?.id ?? key), selection]
+                })
+            )
 
-            quantities.set(key, (quantities.get(key) || 0) + Number(item.quantity))
-        }
+            if (
+                Object.keys(selectedOptions).length === 0
+                && item.selectedOption !== null
+                && item.selectedOption !== undefined
+            ) {
+                const group = (item.options || []).find((option) => (
+                    option.items?.some((choice) => String(choice.id) === String(item.selectedOption))
+                ))
+                if (group?.id !== undefined && group?.id !== null) {
+                    selectedOptions[String(group.id)] = item.selectedOption
+                }
+            }
 
-        return Array.from(quantities.entries())
-            .map(([key, quantity]) => ({
-                product_id: key.startsWith('id:') ? Number(key.slice(3)) : key,
-                quantity,
-            }))
-            .sort((first, second) => String(first.product_id).localeCompare(String(second.product_id)))
+            return {
+                product_id: Number.isSafeInteger(productId) && productId > 0
+                    ? productId
+                    : rawProductId,
+                quantity: Number(item.quantity),
+                selected_options: selectedOptions,
+                ...(item.selectedSize?.id !== undefined
+                    ? { selected_size_id: item.selectedSize.id }
+                    : {}),
+                ...(item.selectedSize?.name
+                    ? { selected_size_name: item.selectedSize.name }
+                    : {}),
+            }
+        })
     })
     const couponItemsSignature = computed(() => JSON.stringify(couponItems.value))
     const couponDiscount = computed(() => {
