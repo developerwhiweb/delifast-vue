@@ -25,6 +25,9 @@ describe('OrderHistoryModal customizations', () => {
       id: 21,
       status: 'pending',
       total: 80,
+      payment_method: 'pix',
+      coupon_code: 'BEMVINDO',
+      coupon_discount: 5,
       items: [
         {
           product_title: 'Pizza 2 sabores',
@@ -109,5 +112,9 @@ describe('OrderHistoryModal customizations', () => {
       .find((item) => item.text().includes('Pizza 2 sabores'))
     expect(pizzaDetails.text()).not.toContain('Adicionais:')
     expect(customizations.text()).not.toContain('Sobremesa')
+    expect(wrapper.find('.order-summary').text()).toContain('Forma de pagamento: PIX')
+    expect(wrapper.find('.order-summary').text()).toContain('Cupom aplicado: BEMVINDO')
+    expect(wrapper.find('.order-summary').text()).toContain('Desconto do cupom:')
+    expect(wrapper.find('.order-summary').text()).toContain('5,00')
   })
 })

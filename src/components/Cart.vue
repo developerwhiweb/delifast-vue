@@ -1139,6 +1139,8 @@
                 : null,
             subtotal: cart.subTotal,
             discount: orderDiscount.value,
+            coupon_code: couponForWhatsApp?.code ?? null,
+            coupon_discount: couponForWhatsApp?.discount ?? 0,
             total: checkoutTotal.value,
             notes: orderNotes.length ? orderNotes.join('\n') : null,
             items: cart.items.map((item) => {

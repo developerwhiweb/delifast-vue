@@ -62,6 +62,14 @@
                   <strong>Forma de pagamento:</strong> 
                   {{ getPaymentMethodText(order.paymentMethod) }}
                 </div>
+                <div v-if="order.couponCode" class="summary-item mb-1">
+                  <strong>Cupom aplicado:</strong>
+                  {{ order.couponCode }}
+                </div>
+                <div v-if="order.couponCode && order.couponDiscount > 0" class="summary-item mb-1">
+                  <strong>Desconto do cupom:</strong>
+                  - {{ formatCurrency(order.couponDiscount) }}
+                </div>
                 <div class="summary-item mb-1" v-if="order.deliveryAddress">
                   <strong>Endereço de entrega:</strong> 
                   {{ formatAddress(order.deliveryAddress) }}
@@ -167,27 +175,49 @@ const getProductImageUrl = (path) => {
   return `${baseUrl}/storage/${path.replace(/^\/+/, '')}`
 }
 
-const normalizeOrder = (order) => ({
-  ...order,
-  createdAt: order.createdAt ?? order.created_at,
-  paymentMethod: order.paymentMethod ?? order.payment_method,
-  deliveryAddress: order.deliveryAddress ?? order.delivery_address ?? order.address,
-  total: order.total ?? order.total_amount ?? 0,
-  items: (Array.isArray(order.items) ? order.items : []).map((item) => {
-    const details = item.details && typeof item.details === 'object' ? item.details : {}
+const getCouponFromNotes = (notes) => {
+  const match = String(notes || '').match(/Cupom aplicado:\s*([^\s(]+)(?:\s*\(([^)]*)\))?/i)
+  if (!match) return null
 
-    return {
-      ...details,
-      ...item,
-      name: item.name ?? item.product_title ?? details.name,
-      price: item.unit_price ?? item.price ?? details.price,
-      finalPrice: item.total_price ?? item.finalPrice ?? details.finalPrice,
-      image: getProductImageUrl(
-        item.image ?? item.product_image ?? details.image
-      )
-    }
-  })
-})
+  const amount = match[2]?.match(/R\$\s*([\d.,]+)/i)?.[1]
+  const discount = amount
+    ? Number(amount.replace(/\./g, '').replace(',', '.'))
+    : 0
+
+  return {
+    code: match[1],
+    discount: Number.isFinite(discount) ? discount : 0,
+  }
+}
+
+const normalizeOrder = (order) => {
+  const notesCoupon = getCouponFromNotes(order.notes)
+  const storedCouponDiscount = Number(order.couponDiscount ?? order.coupon_discount) || 0
+
+  return {
+    ...order,
+    createdAt: order.createdAt ?? order.created_at,
+    paymentMethod: order.paymentMethod ?? order.payment_method,
+    couponCode: order.couponCode ?? order.coupon_code ?? notesCoupon?.code ?? null,
+    couponDiscount: storedCouponDiscount || notesCoupon?.discount || 0,
+    deliveryAddress: order.deliveryAddress ?? order.delivery_address ?? order.address,
+    total: order.total ?? order.total_amount ?? 0,
+    items: (Array.isArray(order.items) ? order.items : []).map((item) => {
+      const details = item.details && typeof item.details === 'object' ? item.details : {}
+
+      return {
+        ...details,
+        ...item,
+        name: item.name ?? item.product_title ?? details.name,
+        price: item.unit_price ?? item.price ?? details.price,
+        finalPrice: item.total_price ?? item.finalPrice ?? details.finalPrice,
+        image: getProductImageUrl(
+          item.image ?? item.product_image ?? details.image
+        )
+      }
+    })
+  }
+}
 
 const getSelectedOptionGroups = (item) => {
   const selections = item.selectedOptions && typeof item.selectedOptions === 'object'
@@ -433,7 +463,7 @@ const getPaymentMethodText = (method) => {
     meal_voucher: 'Vale Refeição',
     gift_card: 'Vale Presente'
   }
-  return methodMap[method] || method
+  return methodMap[method] || method || 'Não informado'
 }
 
 const reorder = (order) => {
