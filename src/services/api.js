@@ -220,6 +220,7 @@ export const getOrder = async (id) => {
 }
 
 export const createOrder = (order) => api.post('/client/orders', order)
+export const validateCoupon = (coupon) => api.post(`${clientEndpoint}/coupons/validate`, coupon)
 
 export const getAppearance = async () => {
     const { data } = await api.get('/appearance')

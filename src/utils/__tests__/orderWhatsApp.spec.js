@@ -124,4 +124,20 @@ describe('order WhatsApp message', () => {
     expect(formatOrderWhatsAppMessage(orderData, { number: 'PED-456' }))
       .toContain('💵 *Troco:* Não precisa de troco')
   })
+
+  it('shows the coupon discount separately from other order discounts', () => {
+    const message = formatOrderWhatsAppMessage({
+      customer: { name: 'Ana' },
+      payment_method: 'pix',
+      coupon: { code: 'BEMVINDO', discount: 5 },
+      discount: 8,
+      total: 20,
+      items: [],
+    }, { number: 'PED-789' })
+
+    expect(message).toContain('Cupom *BEMVINDO:* -R$ 5,00')
+    expect(message).toContain('Outros descontos: -R$ 3,00')
+    expect(message).not.toContain('Desconto do pedido:')
+    expect(message).toContain('*TOTAL DO PEDIDO: R$ 20,00*')
+  })
 })

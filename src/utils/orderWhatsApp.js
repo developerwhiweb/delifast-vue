@@ -252,7 +252,14 @@ export const formatOrderWhatsAppMessage = (orderData, savedOrder) => {
         '━━━━━━━━━━━━━━━━━━',
         '',
     )
-    if (Number(orderData.discount) > 0) {
+    const couponDiscount = Number(orderData.coupon?.discount) || 0
+    if (orderData.coupon?.code) {
+        lines.push(`Cupom *${orderData.coupon.code}:* -${formatPrice(couponDiscount)}`)
+        const otherDiscounts = Math.max(0, Number((Number(orderData.discount) - couponDiscount).toFixed(2)))
+        if (otherDiscounts > 0) {
+            lines.push(`Outros descontos: -${formatPrice(otherDiscounts)}`)
+        }
+    } else if (Number(orderData.discount) > 0) {
         lines.push(`Desconto do pedido: -${formatPrice(orderData.discount)}`)
     }
     lines.push(

@@ -372,15 +372,49 @@
                 </div>
 
                 <!-- Cupom -->
-                <div class="mt-2 d-flex gap-2 justify-content-between align-items-center mb-4">
-                    <span class="info-value">Cupom:</span>
-                    <input type="text" class="form-control w-75" placeholder="Digite o código aqui">
+                <form class="mt-3 mb-4" @submit.prevent="applyCoupon">
+                    <label for="cart-coupon-code" class="form-label info-value">Cupom de desconto</label>
+                    <div class="input-group">
+                        <input
+                            id="cart-coupon-code"
+                            v-model="couponCode"
+                            type="text"
+                            class="form-control"
+                            placeholder="Digite o código"
+                            autocomplete="off"
+                            :disabled="isValidatingCoupon"
+                        >
+                        <button
+                            type="submit"
+                            class="btn btn-outline-primary"
+                            :disabled="isValidatingCoupon || isCurrentCouponApplied"
+                        >
+                            {{ isValidatingCoupon ? 'Validando...' : isCurrentCouponApplied ? 'Aplicado' : 'Aplicar' }}
+                        </button>
+                    </div>
+                    <div v-if="couponError" class="small text-danger mt-1" role="alert">
+                        {{ couponError }}
+                    </div>
+                    <div v-if="appliedCoupon" class="d-flex justify-content-between align-items-center small text-success mt-2">
+                        <span>Cupom {{ appliedCoupon.code }} aplicado</span>
+                        <button type="button" class="btn btn-link btn-sm p-0" @click="removeCoupon">
+                            Remover
+                        </button>
+                    </div>
+                    <div v-if="appliedCoupon?.discountCapped" class="small text-muted mt-1">
+                        O desconto foi limitado ao valor restante do pedido.
+                    </div>
+                </form>
+
+                <div v-if="couponDiscount > 0" class="d-flex justify-content-between mb-2">
+                    <span class="info-value">Desconto do cupom:</span>
+                    <strong>- {{ formatPrice(couponDiscount) }}</strong>
                 </div>
                 
                 <!-- Total -->
                 <div class="d-flex justify-content-between">
                     <span class="info-value">Total:</span>
-                    <strong>{{ formatPrice(cart.total) }}</strong>
+                    <strong>{{ formatPrice(checkoutTotal) }}</strong>
                 </div>
             </div>
         </div>
@@ -399,7 +433,7 @@
 
         <CashChangeModal
             v-model="showCashChangeModal"
-            :total="cart.total"
+            :total="checkoutTotal"
             @change-confirmed="handleCashChangeConfirmed"
         />
 
@@ -440,7 +474,7 @@
     import CashChangeModal from './CashChangeModal.vue'
     import { useCartStore } from '@/stores/useCartStore'
     import { useUserStore } from '@/stores/useUserStore'
-    import { createOrder, getAddresses, getContacts } from '@/services/api'
+    import { createOrder, getAddresses, getContacts, validateCoupon } from '@/services/api'
     import { createOrderWhatsAppUrl, formatOrderWhatsAppMessage } from '@/utils/orderWhatsApp'
 
     const toast = useToast()
@@ -457,12 +491,50 @@
     const cashChange = ref(null)
     const isSubmitting = ref(false)
     const cashChangeStorageKey = 'selectedCashChange'
+    const couponCode = ref('')
+    const appliedCoupon = ref(null)
+    const couponError = ref('')
+    const isValidatingCoupon = ref(false)
+    const couponItems = computed(() => {
+        const quantities = new Map()
+
+        for (const item of cart.items) {
+            const rawProductId = item.productId ?? item.originalProductId ?? item.id
+            const productId = Number(rawProductId)
+            const key = Number.isSafeInteger(productId) && productId > 0
+                ? `id:${productId}`
+                : `invalid:${String(rawProductId ?? '')}`
+
+            quantities.set(key, (quantities.get(key) || 0) + Number(item.quantity))
+        }
+
+        return Array.from(quantities.entries())
+            .map(([key, quantity]) => ({
+                product_id: key.startsWith('id:') ? Number(key.slice(3)) : key,
+                quantity,
+            }))
+            .sort((first, second) => String(first.product_id).localeCompare(String(second.product_id)))
+    })
+    const couponItemsSignature = computed(() => JSON.stringify(couponItems.value))
+    const couponDiscount = computed(() => {
+        if (!appliedCoupon.value || appliedCoupon.value.itemsSignature !== couponItemsSignature.value) {
+            return 0
+        }
+
+        return Number(appliedCoupon.value.discount) || 0
+    })
+    const checkoutTotal = computed(() => Math.max(0, Number(cart.total) - couponDiscount.value))
+    const orderDiscount = computed(() => cart.discount + couponDiscount.value)
+    const isCurrentCouponApplied = computed(() => (
+        Boolean(appliedCoupon.value)
+        && couponCode.value.trim().toUpperCase() === appliedCoupon.value.code.toUpperCase()
+    ))
     const isCashChangeValid = computed(() => {
         if (selectedPaymentMethod.value !== 'cash') return true
         if (!cashChange.value) return false
         if (!cashChange.value.needsChange) return true
 
-        return Math.round(Number(cashChange.value.amount) * 100) > Math.round(cart.total * 100)
+        return Math.round(Number(cashChange.value.amount) * 100) > Math.round(checkoutTotal.value * 100)
     })
 
     // Product modal
@@ -648,6 +720,106 @@
         localStorage.setItem(cashChangeStorageKey, JSON.stringify(change))
     }
 
+    const getCouponValidationItems = () => {
+        const items = couponItems.value
+        if (!items.length) {
+            throw new Error('Adicione produtos ao carrinho antes de validar um cupom.')
+        }
+
+        if (items.some(({ product_id, quantity }) => (
+            !Number.isSafeInteger(product_id)
+            || product_id <= 0
+            || !Number.isSafeInteger(quantity)
+            || quantity <= 0
+        ))) {
+            throw new Error('Não foi possível identificar os produtos do carrinho para validar o cupom.')
+        }
+
+        return items
+    }
+
+    const removeCoupon = () => {
+        appliedCoupon.value = null
+        couponCode.value = ''
+        couponError.value = ''
+    }
+
+    const applyCoupon = async () => {
+        if (isValidatingCoupon.value || isCurrentCouponApplied.value) return
+
+        const code = couponCode.value.trim()
+        if (!code) {
+            couponError.value = 'Digite o código do cupom.'
+            return
+        }
+
+        if (!userStore.isLogged) {
+            couponError.value = 'Entre na sua conta para validar o cupom.'
+            showModal.value = true
+            return
+        }
+
+        let items
+        try {
+            items = getCouponValidationItems()
+        } catch (error) {
+            couponError.value = error.message
+            return
+        }
+
+        const itemsSignature = couponItemsSignature.value
+        couponError.value = ''
+        isValidatingCoupon.value = true
+
+        try {
+            const { data } = await validateCoupon({ code, items })
+            if (itemsSignature !== couponItemsSignature.value) {
+                couponError.value = 'O carrinho foi alterado. Valide o cupom novamente.'
+                return
+            }
+
+            const discount = Number(data?.discount)
+            if (
+                data?.valid !== true
+                || !data.coupon?.id
+                || !Number.isFinite(discount)
+                || discount < 0
+            ) {
+                throw new Error(data?.message || 'A API retornou uma resposta de cupom inválida.')
+            }
+
+            const availableTotal = Math.max(0, Number(cart.total) || 0)
+            appliedCoupon.value = {
+                id: data.coupon.id,
+                code: typeof data.coupon.code === 'string' && data.coupon.code.trim()
+                    ? data.coupon.code.trim()
+                    : code,
+                discount: Math.min(discount, availableTotal),
+                discountCapped: discount > availableTotal,
+                itemsSignature,
+            }
+            couponCode.value = appliedCoupon.value.code
+            toast.success('Cupom aplicado com sucesso!')
+        } catch (error) {
+            if (error.response?.status === 401) {
+                couponError.value = 'Sua sessão expirou. Entre novamente para validar o cupom.'
+                showModal.value = true
+            } else {
+                const validationErrors = error.response?.data?.errors
+                const validationMessage = validationErrors
+                    ? Object.values(validationErrors).flat().find((message) => typeof message === 'string')
+                    : null
+                couponError.value = error.response?.data?.message
+                    || validationMessage
+                    || error.message
+                    || 'Não foi possível validar o cupom.'
+            }
+            appliedCoupon.value = null
+        } finally {
+            isValidatingCoupon.value = false
+        }
+    }
+
     const openAddressModal = () => {
         if (!userStore.isLogged) {
             toast.warning('Você precisa se identificar primeiro!', {
@@ -831,6 +1003,7 @@
             selectedPaymentMethod.value = ''
             cashChange.value = null
             showCashChangeModal.value = false
+            removeCoupon()
             localStorage.removeItem(cashChangeStorageKey)
             localStorage.removeItem('addresses')
             localStorage.removeItem('selectedAddress')
@@ -844,6 +1017,23 @@
     // Força re-renderização
     forceUpdate.value++
     }, { deep: true })
+
+    watch(couponCode, (value) => {
+        couponError.value = ''
+        if (
+            appliedCoupon.value
+            && value.trim().toUpperCase() !== appliedCoupon.value.code.toUpperCase()
+        ) {
+            appliedCoupon.value = null
+        }
+    })
+
+    watch(couponItemsSignature, (itemsSignature) => {
+        if (!appliedCoupon.value || appliedCoupon.value.itemsSignature === itemsSignature) return
+
+        appliedCoupon.value = null
+        couponError.value = 'O carrinho foi alterado. Valide o cupom novamente.'
+    })
 
     onMounted(() => {
         // Expor products para o window para acesso no Cart
@@ -894,6 +1084,22 @@
             return
         }
         
+        const couponForWhatsApp = appliedCoupon.value
+            ? {
+                code: appliedCoupon.value.code,
+                discount: couponDiscount.value,
+            }
+            : null
+        const orderNotes = []
+        if (selectedPaymentMethod.value === 'cash') {
+            orderNotes.push(cashChange.value.needsChange
+                ? `Troco para ${formatPrice(cashChange.value.amount)}`
+                : 'Não precisa de troco.')
+        }
+        if (couponForWhatsApp) {
+            orderNotes.push(`Cupom aplicado: ${couponForWhatsApp.code} (${formatPrice(couponForWhatsApp.discount)} de desconto).`)
+        }
+
         const orderData = {
             customer: {
                 name: userStore.fullName,
@@ -903,11 +1109,6 @@
             delivery_details: selectedDeliveryMethod.value,
             payment_method: selectedPaymentMethod.value,
             cash_change: selectedPaymentMethod.value === 'cash' ? cashChange.value : null,
-            notes: selectedPaymentMethod.value === 'cash'
-                ? cashChange.value.needsChange
-                    ? `Troco para ${formatPrice(cashChange.value.amount)}`
-                    : 'Não precisa de troco.'
-                : null,
             address_id: selectedDeliveryMethod.value.value === 'delivery'
                 ? selectedAddress.value.id
                 : null,
@@ -915,8 +1116,9 @@
                 ? selectedAddress.value
                 : null,
             subtotal: cart.subTotal,
-            discount: cart.discount,
-            total: cart.total,
+            discount: orderDiscount.value,
+            total: checkoutTotal.value,
+            notes: orderNotes.length ? orderNotes.join('\n') : null,
             items: cart.items.map((item) => {
                 const totalPrice = cart.calculateItemTotal(item)
                 const unitPrice = totalPrice / item.quantity
@@ -940,6 +1142,7 @@
         try {
             const response = await createOrder(orderData)
             const savedOrder = response.data?.data
+            removeCoupon()
             cart.clear({ silent: true })
             cashChange.value = null
             localStorage.removeItem(cashChangeStorageKey)
@@ -951,7 +1154,7 @@
                 const contacts = await getContacts()
                 const whatsappUrl = createOrderWhatsAppUrl(
                     contacts[0]?.whatsapp,
-                    formatOrderWhatsAppMessage(orderData, savedOrder),
+                    formatOrderWhatsAppMessage({ ...orderData, coupon: couponForWhatsApp }, savedOrder),
                 )
 
                 if (!whatsappUrl) {
