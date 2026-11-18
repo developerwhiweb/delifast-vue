@@ -489,6 +489,7 @@
     import { useUserStore } from '@/stores/useUserStore'
     import { createOrder, getAddresses, getContacts, validateCoupon } from '@/services/api'
     import { createOrderWhatsAppUrl, formatOrderWhatsAppMessage } from '@/utils/orderWhatsApp'
+    import { buildCouponValidationItem } from '@/utils/couponPayload'
 
     const toast = useToast()
     const cart = useCartStore()
@@ -508,48 +509,7 @@
     const appliedCoupon = ref(null)
     const couponError = ref('')
     const isValidatingCoupon = ref(false)
-    const couponItems = computed(() => {
-        return cart.items.map((item) => {
-            const rawProductId = item.productId ?? item.originalProductId ?? item.id
-            const productId = Number(rawProductId)
-            const options = item.selectedOptions || {}
-            const selectedOptions = Object.fromEntries(
-                Object.entries(options).map(([key, selection]) => {
-                    const group = (item.options || []).find((option, index) => (
-                        String(option.id ?? option.title ?? index) === String(key)
-                    ))
-                    return [String(group?.id ?? key), selection]
-                })
-            )
-
-            if (
-                Object.keys(selectedOptions).length === 0
-                && item.selectedOption !== null
-                && item.selectedOption !== undefined
-            ) {
-                const group = (item.options || []).find((option) => (
-                    option.items?.some((choice) => String(choice.id) === String(item.selectedOption))
-                ))
-                if (group?.id !== undefined && group?.id !== null) {
-                    selectedOptions[String(group.id)] = item.selectedOption
-                }
-            }
-
-            return {
-                product_id: Number.isSafeInteger(productId) && productId > 0
-                    ? productId
-                    : rawProductId,
-                quantity: Number(item.quantity),
-                selected_options: selectedOptions,
-                ...(item.selectedSize?.id !== undefined
-                    ? { selected_size_id: item.selectedSize.id }
-                    : {}),
-                ...(item.selectedSize?.name
-                    ? { selected_size_name: item.selectedSize.name }
-                    : {}),
-            }
-        })
-    })
+    const couponItems = computed(() => cart.items.map(buildCouponValidationItem))
     const couponItemsSignature = computed(() => JSON.stringify(couponItems.value))
     const couponDiscount = computed(() => {
         if (!appliedCoupon.value || appliedCoupon.value.itemsSignature !== couponItemsSignature.value) {
@@ -761,6 +721,10 @@
             throw new Error('Adicione produtos ao carrinho antes de validar um cupom.')
         }
 
+        if (items.some(({ hasUnmappedOption }) => hasUnmappedOption)) {
+            throw new Error('Uma das opções do carrinho não corresponde mais ao produto. Reabra o produto e selecione a opção novamente.')
+        }
+
         if (items.some(({ product_id, quantity }) => (
             !Number.isSafeInteger(product_id)
             || product_id <= 0
@@ -770,7 +734,7 @@
             throw new Error('Não foi possível identificar os produtos do carrinho para validar o cupom.')
         }
 
-        return items
+        return items.map(({ hasUnmappedOption, ...item }) => item)
     }
 
     const removeCoupon = () => {
@@ -1156,17 +1120,25 @@
             coupon_discount: couponForWhatsApp?.discount ?? 0,
             total: checkoutTotal.value,
             notes: orderNotes.length ? orderNotes.join('\n') : null,
-            items: cart.items.map((item) => {
+            items: cart.items.map((item, index) => {
                 const totalPrice = cart.calculateItemTotal(item)
                 const unitPrice = totalPrice / item.quantity
+                const validatedItem = couponItems.value[index]
 
                 return {
-                    product_id: item.productId ?? item.originalProductId,
+                    product_id: validatedItem.product_id,
                     name: item.name,
-                    quantity: item.quantity,
+                    quantity: validatedItem.quantity,
                     price: unitPrice,
                     unit_price: unitPrice,
                     total_price: totalPrice,
+                    selected_options: validatedItem.selected_options,
+                    ...(validatedItem.selected_size_id !== undefined
+                        ? { selected_size_id: validatedItem.selected_size_id }
+                        : {}),
+                    ...(validatedItem.selected_size_name
+                        ? { selected_size_name: validatedItem.selected_size_name }
+                        : {}),
                     details: item
                 }
             })
