@@ -471,7 +471,7 @@
               {{ isEditing ? 'Atualizar' : (product?.isCombo ? 'Adicionar Combo' : 'Adicionar ao Carrinho') }}
             </button>
           </div>
-          <div v-if="!canAddMoreStock" class="small text-danger text-center mt-2" role="status">
+          <div v-if="!canAddMoreStock" class="col-12 small text-danger text-center text-break mt-2" role="status">
             {{ stockLimitMessage }}
           </div>
         </div>
@@ -689,7 +689,7 @@
   const stockLimitMessage = computed(() => (
     props.product?.stock?.control && Number(props.product.stock.quantity) <= 0
       ? 'Produto esgotado.'
-      : 'Você já atingiu o limite disponível deste produto no carrinho.'
+      : 'Limite atingido no carrinho.'
   ))
     
   const canSubmit = computed(() => {

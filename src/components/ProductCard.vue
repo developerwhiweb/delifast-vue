@@ -10,7 +10,7 @@
           <i class="bi bi-bullseye"></i>
           COMBO
         </span>
-        
+
         <span class="badge cashback position-absolute top-0 start-0 m-2 small" v-else-if="product.cashback">
           {{ product.cashback }}% cashback
         </span>
@@ -25,40 +25,50 @@
           {{ product.description }}
         </p>
 
-        <div class="mt-auto d-flex justify-content-between align-items-end">
-          <div class="info-price">
-            <div v-if="hasVariations" class="d-flex flex-column">
-              <p class="mb-0 text-dark a-partir">A partir de</p>
-              <strong class="text-dark price">R$ {{ formatPrice(minPrice) }}</strong>
-            </div>
-            <div v-else>
-              <strong class="text-dark price">R$ {{ formatPrice(product.price) }}</strong>
-            </div>
-            
-            <div class="d-flex gap-1" v-if="product.oldPrice && !hasVariations">
-              <div class="text-muted small text-decoration-line-through">
-                R$ {{ formatPrice(product.oldPrice) }}
+        <div class="mt-auto">
+          <div class="d-flex justify-content-between align-items-end">
+            <div class="info-price">
+              <div v-if="hasVariations" class="d-flex flex-column">
+                <p class="mb-0 text-dark a-partir">A partir de</p>
+                <strong class="text-dark price">R$ {{ formatPrice(minPrice) }}</strong>
               </div>
-              <div class="percent bg-primary rounded-1 text-white d-flex justify-content-center align-items-center px-1">
-                {{ Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100) }}%
+              <div v-else>
+                <strong class="text-dark price">R$ {{ formatPrice(product.price) }}</strong>
+              </div>
+
+              <div class="d-flex gap-1" v-if="product.oldPrice && !hasVariations">
+                <div class="text-muted small text-decoration-line-through">
+                  R$ {{ formatPrice(product.oldPrice) }}
+                </div>
+                <div class="percent bg-primary rounded-1 text-white d-flex justify-content-center align-items-center px-1">
+                  {{ Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100) }}%
+                </div>
               </div>
             </div>
+
+            <button
+              class="btn btn-sm btn-primary border-1 px-2 px-md-2 py-1"
+              :disabled="!canAddToCart"
+              :title="canAddToCart ? 'Adicionar ao carrinho' : stockLimitMessage"
+              @click.stop="handleClick"
+            >
+              <svg class="svg-car" width="32" height="34" viewBox="0 0 32 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22.6039 3.84615H13.9929V6.64335H22.6039V3.84615ZM28.3446 3.4965V13.1119L10.3332 16.993L6.81706 0H1.43517C1.05454 0 0.689498 0.18419 0.420351 0.512051C0.151205 0.839912 0 1.28459 0 1.74825C0 2.21192 0.151205 2.65659 0.420351 2.98445C0.689498 3.31231 1.05454 3.4965 1.43517 3.4965H4.62125L9.25684 26.2238H28.3446V22.7273H11.4957L11.0221 20.4021L31.2149 16.0489V3.4965H28.3446ZM9.68739 27.972C9.26162 27.972 8.84541 28.1258 8.49139 28.414C8.13737 28.7021 7.86144 29.1117 7.69851 29.5909C7.53557 30.07 7.49294 30.5973 7.576 31.106C7.65907 31.6147 7.8641 32.0819 8.16517 32.4487C8.46624 32.8154 8.84982 33.0652 9.26741 33.1664C9.68501 33.2676 10.1179 33.2156 10.5112 33.0172C10.9046 32.8187 11.2408 32.4826 11.4773 32.0513C11.7139 31.6201 11.8401 31.1131 11.8401 30.5944C11.8401 29.8989 11.6133 29.2319 11.2096 28.7401C10.8059 28.2483 10.2583 27.972 9.68739 27.972ZM26.9094 27.972C26.4837 27.972 26.0674 28.1258 25.7134 28.414C25.3594 28.7021 25.0835 29.1117 24.9205 29.5909C24.7576 30.07 24.715 30.5973 24.798 31.106C24.8811 31.6147 25.0861 32.0819 25.3872 32.4487C25.6883 32.8154 26.0719 33.0652 26.4894 33.1664C26.907 33.2676 27.3399 33.2156 27.7332 33.0172C28.1266 32.8187 28.4628 32.4826 28.6994 32.0513C28.9359 31.6201 29.0622 31.1131 29.0622 30.5944C29.0622 29.8989 28.8354 29.2319 28.4317 28.7401C28.0279 28.2483 27.4804 27.972 26.9094 27.972Z" fill="var(--primary)"/>
+              </svg>
+              <span class="ms-1 text-primary">+</span>
+            </button>
           </div>
-          
-          <div v-if="!canAddToCart" class="small text-danger text-end">
-            {{ stockLimitMessage }}
-          </div>
-          <button
-            class="btn btn-sm btn-primary border-1 px-2 px-md-2 py-1"
-            :disabled="!canAddToCart"
-            :title="canAddToCart ? 'Adicionar ao carrinho' : stockLimitMessage"
-            @click.stop="handleClick"
-          >
-            <svg class="svg-car" width="32" height="34" viewBox="0 0 32 34" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M22.6039 3.84615H13.9929V6.64335H22.6039V3.84615ZM28.3446 3.4965V13.1119L10.3332 16.993L6.81706 0H1.43517C1.05454 0 0.689498 0.18419 0.420351 0.512051C0.151205 0.839912 0 1.28459 0 1.74825C0 2.21192 0.151205 2.65659 0.420351 2.98445C0.689498 3.31231 1.05454 3.4965 1.43517 3.4965H4.62125L9.25684 26.2238H28.3446V22.7273H11.4957L11.0221 20.4021L31.2149 16.0489V3.4965H28.3446ZM9.68739 27.972C9.26162 27.972 8.84541 28.1258 8.49139 28.414C8.13737 28.7021 7.86144 29.1117 7.69851 29.5909C7.53557 30.07 7.49294 30.5973 7.576 31.106C7.65907 31.6147 7.8641 32.0819 8.16517 32.4487C8.46624 32.8154 8.84982 33.0652 9.26741 33.1664C9.68501 33.2676 10.1179 33.2156 10.5112 33.0172C10.9046 32.8187 11.2408 32.4826 11.4773 32.0513C11.7139 31.6201 11.8401 31.1131 11.8401 30.5944C11.8401 29.8989 11.6133 29.2319 11.2096 28.7401C10.8059 28.2483 10.2583 27.972 9.68739 27.972ZM26.9094 27.972C26.4837 27.972 26.0674 28.1258 25.7134 28.414C25.3594 28.7021 25.0835 29.1117 24.9205 29.5909C24.7576 30.07 24.715 30.5973 24.798 31.106C24.8811 31.6147 25.0861 32.0819 25.3872 32.4487C25.6883 32.8154 26.0719 33.0652 26.4894 33.1664C26.907 33.2676 27.3399 33.2156 27.7332 33.0172C28.1266 32.8187 28.4628 32.4826 28.6994 32.0513C28.9359 31.6201 29.0622 31.1131 29.0622 30.5944C29.0622 29.8989 28.8354 29.2319 28.4317 28.7401C28.0279 28.2483 27.4804 27.972 26.9094 27.972Z" fill="var(--primary)"/>
+          <div v-if="!canAddToCart" class="stock-limit-message" role="status">
+            <svg
+              class="stock-limit-icon"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 16 16"
+              aria-hidden="true"
+            >
+              <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4m.002 7a1 1 0 1 0 0 2 1 1 0 0 0 0-2"/>
             </svg>
-            <span class="ms-1 text-primary">+</span> 
-          </button>
+            <span>{{ stockLimitMessage }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -81,7 +91,7 @@
   const stockLimitMessage = computed(() => (
     props.product?.stock?.control && Number(props.product.stock.quantity) <= 0
       ? 'Esgotado'
-      : 'Limite de estoque atingido no carrinho'
+      : 'Limite atingido'
   ))
 
   // Verifica se é combo
@@ -239,6 +249,26 @@
   }
   .price{
     font-size: clamp(0.875rem, 1.25vw, 1rem);
+  }
+  .stock-limit-message {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0.375rem 0.5rem;
+    border-radius: 0.375rem;
+    color: #b42318;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+  .stock-limit-icon {
+    flex: 0 0 1rem;
+    width: 1rem;
+    height: 1rem;
+    fill: currentColor;
   }
   .cashback{
     background: #D9FFE6;
