@@ -471,6 +471,9 @@
               {{ isEditing ? 'Atualizar' : (product?.isCombo ? 'Adicionar Combo' : 'Adicionar ao Carrinho') }}
             </button>
           </div>
+          <div v-if="!canAddMoreStock" class="small text-danger text-center mt-2" role="status">
+            {{ stockLimitMessage }}
+          </div>
         </div>
 
       </div>
@@ -675,8 +678,22 @@
         props.product.originalSelectedFlavors.length > 0) return true
     return false
   })
+
+  const canAddMoreStock = computed(() => {
+    if (!props.product) return false
+    return isEditing.value
+      ? cart.canUpdateItem(props.product.cartItemId, props.product)
+      : cart.canAdd(props.product)
+  })
+
+  const stockLimitMessage = computed(() => (
+    props.product?.stock?.control && Number(props.product.stock.quantity) <= 0
+      ? 'Produto esgotado.'
+      : 'Você já atingiu o limite disponível deste produto no carrinho.'
+  ))
     
   const canSubmit = computed(() => {
+    if (!canAddMoreStock.value) return false
     if (isEditing.value) return true
     if (isCombo.value) {
       // Verifica se todas as opções obrigatórias foram selecionadas
@@ -1237,6 +1254,7 @@ const prepareComboForCart = () => {
     finalPrice: finalPrice.value,
     quantity: 1,
     isCombo: true,
+    stock: props.product.stock,
     comboItems: props.product.comboItems,
     comboAddons: props.product.comboAddons,
     selectedAddons: selectedAddons,
@@ -1281,6 +1299,7 @@ const prepareComboForCart = () => {
       aditionals: updatedAditionals,
       customization: props.product.customization,
       cuisineType: props.product.cuisineType,
+      stock: props.product.stock,
       isCombo: false
     }
   }

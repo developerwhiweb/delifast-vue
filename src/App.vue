@@ -374,6 +374,7 @@
       })
 
       products.value = apiProducts.map((product) => normalizeProduct(product, apiCategories))
+      cart.syncProductStock(products.value)
       normalizedCategories.forEach((category) => {
         category.products = products.value.filter(
           (product) => !product.featured && product.category === category.id,

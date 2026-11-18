@@ -336,8 +336,21 @@
 
                         <div class="qty-control d-flex justify-content-center align-items-center">
                             <button class="btn-minus" @click.stop="cart.decrease(item.id)">-</button>
-                            <span class="mx-2">{{ item.quantity }}</span>
-                            <button class="btn-plus" @click.stop="cart.increase(item.id)">+</button>
+                            <span
+                                class="mx-2 d-flex flex-column align-items-center"
+                                :title="item.stock?.control ? `${cart.getProductQuantity(item)} de ${item.stock.quantity} unidades no carrinho` : null"
+                            >
+                                {{ item.quantity }}
+                                <small v-if="item.stock?.control" class="stock-quantity">
+                                    {{ cart.getProductQuantity(item) }}/{{ item.stock.quantity }}
+                                </small>
+                            </span>
+                            <button
+                                class="btn-plus"
+                                :disabled="!cart.canIncrease(item.id)"
+                                :title="cart.canIncrease(item.id) ? 'Aumentar quantidade' : 'Limite de estoque atingido'"
+                                @click.stop="cart.increase(item.id)"
+                            >+</button>
                         </div>
                         
                         <button 
@@ -1415,10 +1428,19 @@
 .qty-control span{
     font-weight: 800;
 }
+.qty-control .stock-quantity {
+    font-size: 0.65rem;
+    line-height: 1;
+    white-space: nowrap;
+}
 .btn-plus {
     color: #5CB85C;
     font-size: 1.563rem;
     font-weight: 800;
+}
+.btn-plus:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
 }
 
 .btn-minus {

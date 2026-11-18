@@ -5,6 +5,7 @@ const toast = vi.hoisted(() => ({
   error: vi.fn(),
   info: vi.fn(),
   success: vi.fn(),
+  warning: vi.fn(),
 }))
 
 vi.mock('vue-toastification', () => ({
@@ -81,6 +82,53 @@ describe('useCartStore', () => {
 
     expect(cart.items).toHaveLength(2)
     expect(cart.total).toBe(35)
+  })
+
+  it('does not exceed API stock across differently customized lines', () => {
+    const cart = useCartStore()
+    const stock = { control: true, available: true, quantity: 2 }
+
+    cart.add({
+      id: 8,
+      name: 'Lanche',
+      price: 15,
+      selectedOption: 'cheddar',
+      stock,
+    })
+    cart.add({
+      id: 8,
+      name: 'Lanche',
+      price: 15,
+      selectedOption: 'bacon',
+      stock,
+    })
+
+    expect(cart.items).toHaveLength(2)
+    expect(cart.canIncrease(cart.items[0].id)).toBe(false)
+
+    cart.increase(cart.items[0].id)
+    cart.add({
+      id: 8,
+      name: 'Lanche',
+      price: 15,
+      selectedOption: 'onion',
+      stock,
+    })
+
+    expect(cart.items.reduce((total, item) => total + item.quantity, 0)).toBe(2)
+    expect(toast.warning).toHaveBeenCalled()
+  })
+
+  it('hydrates stock limits for items already persisted in the cart', () => {
+    const cart = useCartStore()
+    cart.items = [{ id: 'cart-item', productId: 8, quantity: 2, name: 'Lanche' }]
+
+    cart.syncProductStock([{
+      id: 8,
+      stock: { control: true, available: true, quantity: 2 },
+    }])
+
+    expect(cart.canIncrease('cart-item')).toBe(false)
   })
 
   it('uses a selected size option as the product price and adds multiple flavors', () => {

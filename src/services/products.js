@@ -7,7 +7,7 @@ const toNumber = (value, fallback = 0) => {
 
 const toBoolean = (value) => value === true
   || value === 1
-  || (typeof value === 'string' && ['1', 'true', 'yes', 'sim'].includes(value.toLowerCase()))
+  || (typeof value === 'string' && ['1', 'true', 'yes', 'on', 'sim'].includes(value.toLowerCase()))
 
 const parseArray = (value) => {
   if (Array.isArray(value)) return value
@@ -232,13 +232,21 @@ export const normalizeProduct = (product, apiCategories = []) => {
     ? product.name
     : product.title ?? ''
   const featuredValue = product.featured ?? product.is_featured ?? product.highlighted
+  const stockControl = toBoolean(product.stock?.control)
+  const stockQuantity = Math.max(0, Math.floor(toNumber(product.stock?.quantity)))
   const stock = product.stock && typeof product.stock === 'object'
     ? {
         ...product.stock,
-        available: product.active !== false && product.active !== 0,
-        quantity: toNumber(product.stock.quantity),
+        control: stockControl,
+        available: product.active !== false
+          && product.active !== 0
+          && (!stockControl || stockQuantity > 0),
+        quantity: stockQuantity,
       }
-    : { available: product.active !== false && product.active !== 0 }
+    : {
+        control: false,
+        available: product.active !== false && product.active !== 0,
+      }
 
   return {
     ...product,

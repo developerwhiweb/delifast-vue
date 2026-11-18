@@ -130,4 +130,28 @@ describe('normalizeProduct', () => {
       ],
     })
   })
+
+  it('uses API stock control and quantity to determine product availability', () => {
+    const inStock = normalizeProduct({
+      id: 5,
+      active: true,
+      stock: { control: '1', quantity: '3' },
+    })
+    const soldOut = normalizeProduct({
+      id: 6,
+      active: true,
+      stock: { control: true, quantity: 0 },
+    })
+
+    expect(inStock.stock).toMatchObject({
+      control: true,
+      quantity: 3,
+      available: true,
+    })
+    expect(soldOut.stock).toMatchObject({
+      control: true,
+      quantity: 0,
+      available: false,
+    })
+  })
 })

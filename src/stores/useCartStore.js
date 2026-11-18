@@ -1,9 +1,26 @@
 import { defineStore } from 'pinia'
 import { useToast } from 'vue-toastification'
 
+const getProductKey = (item) => {
+  const productId = item?.productId ?? item?.originalProductId ?? item?.id
+  return productId === undefined || productId === null ? null : String(productId)
+}
+
+const isStockControlled = (stock) => stock?.control === true
+  || stock?.control === 1
+  || (typeof stock?.control === 'string'
+    && ['1', 'true', 'yes', 'on', 'sim'].includes(stock.control.toLowerCase()))
+
+const getStockLimit = (stock) => {
+  if (!isStockControlled(stock)) return null
+  const quantity = Number(stock.quantity)
+  return Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0
+}
+
 export const useCartStore = defineStore('cart', {
   state: () => ({
-    items: []
+    items: [],
+    productStock: {},
   }),
 
   persist: {
@@ -87,6 +104,78 @@ export const useCartStore = defineStore('cart', {
   },
 
   actions: {
+    syncProductStock(products) {
+      const stockById = Object.fromEntries(
+        products.map((product) => [String(product.id), product.stock]),
+      )
+      this.productStock = stockById
+
+      for (const item of this.items) {
+        const productKey = getProductKey(item)
+        if (productKey && stockById[productKey]) {
+          item.stock = stockById[productKey]
+        }
+      }
+    },
+
+    getProductStock(product) {
+      const productKey = getProductKey(product)
+      if (product?.stock) return product.stock
+      if (productKey && this.productStock[productKey]) {
+        return this.productStock[productKey]
+      }
+
+      return this.items.find((item) => (
+        getProductKey(item) === productKey && item.stock
+      ))?.stock ?? null
+    },
+
+    getProductQuantity(product, excludedItemId = null) {
+      const productKey = getProductKey(product)
+      if (!productKey) return 0
+
+      return this.items.reduce((quantity, item) => {
+        if (
+          item.id === excludedItemId
+          || getProductKey(item) !== productKey
+        ) return quantity
+
+        return quantity + (Number(item.quantity) || 0)
+      }, 0)
+    },
+
+    canAdd(product) {
+      const stock = this.getProductStock(product)
+      if (stock?.available === false) return false
+
+      const stockLimit = getStockLimit(stock)
+      if (stockLimit === null) return true
+
+      return this.getProductQuantity(product) < stockLimit
+    },
+
+    canIncrease(itemId) {
+      const item = this.items.find((candidate) => candidate.id === itemId)
+      return item ? this.canAdd(item) : false
+    },
+
+    canUpdateItem(itemId, updatedProduct) {
+      const item = this.items.find((candidate) => candidate.id === itemId)
+      if (!item) return false
+
+      const product = {
+        ...item,
+        ...updatedProduct,
+        stock: updatedProduct?.stock ?? item.stock ?? this.getProductStock(item),
+      }
+      const stock = this.getProductStock(product)
+      if (stock?.available === false) return false
+
+      const stockLimit = getStockLimit(stock)
+      if (stockLimit === null) return true
+
+      return this.getProductQuantity(product, itemId) + (Number(item.quantity) || 0) <= stockLimit
+    },
 
     // ⭐ FUNÇÃO PARA GERAR ID ÚNICO
     generateUniqueId() {
@@ -95,6 +184,12 @@ export const useCartStore = defineStore('cart', {
 
     add(product) {
       const toast = useToast()
+      const stock = this.getProductStock(product)
+
+      if (!this.canAdd(product)) {
+        toast.warning(`Estoque disponível de "${product.name}" atingido.`)
+        return false
+      }
 
       // ⭐ FUNÇÃO PARA GERAR ASSINATURA DOS ADICIONAIS
       const getItemAditionalsSignature = (item) => {
@@ -144,6 +239,7 @@ export const useCartStore = defineStore('cart', {
       if (existingIndex !== -1) {
         // Item idêntico encontrado - apenas aumenta quantidade
         this.items[existingIndex].quantity++
+        this.items[existingIndex].stock = stock ?? this.items[existingIndex].stock
         
         // ⭐ PRESERVAR FLAG DE REORDER SE EXISTIR
         if (product.isReorder && !this.items[existingIndex].isReorder) {
@@ -186,7 +282,8 @@ export const useCartStore = defineStore('cart', {
           customization: product.customization,
           isReorder: product.isReorder || false,
           reorderDate: product.reorderDate || null,
-          originalOrderId: product.originalOrderId || null
+          originalOrderId: product.originalOrderId || null,
+          stock,
         }
         
         console.log('📦 Item combo adicionado à store - ID:', comboItem.id)
@@ -227,7 +324,8 @@ export const useCartStore = defineStore('cart', {
         isCombo: false,
         isReorder: product.isReorder || false,
         reorderDate: product.reorderDate || null,
-        originalOrderId: product.originalOrderId || null
+        originalOrderId: product.originalOrderId || null,
+        stock,
       }
 
       console.log('📦 Item normal adicionado à store - ID:', normalItem.id)
@@ -285,6 +383,11 @@ export const useCartStore = defineStore('cart', {
       }
 
       const originalItem = this.items[originalIndex]
+      if (!this.canUpdateItem(product.cartItemId, product)) {
+        toast.warning(`Estoque disponível de "${product.name || originalItem.name}" insuficiente para manter a quantidade do carrinho.`)
+        return
+      }
+
       const originalQuantity = originalItem.quantity
       
       // Remove o original
@@ -317,7 +420,8 @@ export const useCartStore = defineStore('cart', {
           customization: product.customization || originalItem.customization,
           isReorder: originalItem.isReorder || product.isReorder || false,
           reorderDate: originalItem.reorderDate || product.reorderDate || null,
-          originalOrderId: originalItem.originalOrderId || product.originalOrderId || null
+          originalOrderId: originalItem.originalOrderId || product.originalOrderId || null,
+          stock: product.stock ?? originalItem.stock ?? this.getProductStock(originalItem),
         }
         
         // Verifica se já existe item igual (mesmas seleções)
@@ -328,6 +432,7 @@ export const useCartStore = defineStore('cart', {
         
         if (existingIndex !== -1) {
           this.items[existingIndex].quantity += originalQuantity
+          this.items[existingIndex].stock = newComboItem.stock ?? this.items[existingIndex].stock
           toast.success(`"${newComboItem.name}" atualizado e combinado com item existente!`, { timeout: 3000 })
         } else {
           this.items.push(newComboItem)
@@ -366,7 +471,8 @@ export const useCartStore = defineStore('cart', {
         isCombo: false,
         isReorder: originalItem.isReorder || product.isReorder || false,
         reorderDate: originalItem.reorderDate || product.reorderDate || null,
-        originalOrderId: originalItem.originalOrderId || product.originalOrderId || null
+        originalOrderId: originalItem.originalOrderId || product.originalOrderId || null,
+        stock: product.stock ?? originalItem.stock ?? this.getProductStock(originalItem),
       }
 
       // Verifica se já existe item igual
@@ -377,6 +483,7 @@ export const useCartStore = defineStore('cart', {
       
       if (existingIndex !== -1) {
         this.items[existingIndex].quantity += originalQuantity
+        this.items[existingIndex].stock = newNormalItem.stock ?? this.items[existingIndex].stock
         toast.success(`"${newNormalItem.name}" atualizado e combinado com item existente!`, { timeout: 3000 })
       } else {
         this.items.push(newNormalItem)
@@ -391,6 +498,10 @@ export const useCartStore = defineStore('cart', {
       const item = this.items.find(i => i.id === itemId)
       
       if (item) {
+        if (!this.canAdd(item)) {
+          toast.warning(`Estoque disponível de "${item.name}" atingido.`)
+          return
+        }
         item.quantity++
         toast.info(`Quantidade de "${item.name}" agora é ${item.quantity}`, { timeout: 3000 })
       }
