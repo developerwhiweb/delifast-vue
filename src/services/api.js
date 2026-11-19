@@ -164,6 +164,24 @@ export const getContacts = async () => {
     return contacts
 }
 
+export const getAnnouncements = async (placement) => {
+    const { data } = await api.get('/announcements')
+    const placements = data?.data
+
+    if (placements == null || (Array.isArray(placements) && placements.length === 0)) return []
+    if (typeof placements !== 'object' || Array.isArray(placements)) {
+        throw new Error('A resposta de /announcements não contém as listas de anúncios.')
+    }
+
+    const announcements = placements[placement]
+    if (announcements == null) return []
+    if (!Array.isArray(announcements)) {
+        throw new Error(`A lista de anúncios "${placement}" não é válida.`)
+    }
+
+    return announcements
+}
+
 export const getAddresses = async () => {
     const { data } = await api.get('/client/addresses')
     const addresses = Array.isArray(data)

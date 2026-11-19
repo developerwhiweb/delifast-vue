@@ -11,6 +11,7 @@ const {
   getAddresses,
   getCategories,
   getContacts,
+  getAnnouncements,
   getOrder,
   getOrders,
   getProducts,
@@ -94,6 +95,32 @@ describe('API list endpoints', () => {
 
     await expect(getContacts()).rejects.toThrow(
       'A resposta de /contacts não contém uma lista de contatos.',
+    )
+  })
+
+  it('treats missing announcement placements as an empty list', async () => {
+    const getSpy = vi.spyOn(api, 'get').mockResolvedValue({ data: { data: {} } })
+
+    await expect(getAnnouncements('top-right')).resolves.toEqual([])
+    expect(getSpy).toHaveBeenCalledWith('/announcements')
+
+    getSpy.mockResolvedValue({ data: { data: [] } })
+    await expect(getAnnouncements('sidebar-left')).resolves.toEqual([])
+
+    getSpy.mockResolvedValue({ data: { data: null } })
+    await expect(getAnnouncements('sidebar-left')).resolves.toEqual([])
+  })
+
+  it('loads announcements from a placement and rejects malformed placement data', async () => {
+    const getSpy = vi.spyOn(api, 'get').mockResolvedValue({
+      data: { data: { 'top-right': [{ id: 1 }] } },
+    })
+
+    await expect(getAnnouncements('top-right')).resolves.toEqual([{ id: 1 }])
+
+    getSpy.mockResolvedValue({ data: { data: { 'top-right': {} } } })
+    await expect(getAnnouncements('top-right')).rejects.toThrow(
+      'A lista de anúncios "top-right" não é válida.',
     )
   })
 

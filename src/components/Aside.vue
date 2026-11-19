@@ -89,7 +89,7 @@ import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 // Swiper
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Autoplay, Navigation } from 'swiper/modules'
-import { api, resolveApiAssetUrl } from '@/services/api'
+import { getAnnouncements, resolveApiAssetUrl } from '@/services/api'
 
 // CSS do Swiper
 import 'swiper/css'
@@ -111,13 +111,7 @@ const announcements = ref([])
 let swiperInstance = null
 
 const loadAnnouncements = async () => {
-  const { data } = await api.get('/announcements')
-  const sidebarAnnouncements = data?.data?.['sidebar-left']
-
-  if (!Array.isArray(sidebarAnnouncements)) {
-    throw new Error('A resposta da API não contém a lista de anúncios sidebar-left.')
-  }
-
+  const sidebarAnnouncements = await getAnnouncements('sidebar-left')
   announcements.value = sidebarAnnouncements.filter((announcement) => (
     announcement && (
       announcement.path_image

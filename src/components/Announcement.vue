@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Autoplay } from 'swiper/modules'
-import { api, resolveApiAssetUrl } from '@/services/api'
+import { getAnnouncements, resolveApiAssetUrl } from '@/services/api'
 
 import 'swiper/css'
 
@@ -10,13 +10,7 @@ const emit = defineEmits(['availability-change', 'startup-ready'])
 const announcements = ref([])
 
 const loadAnnouncements = async () => {
-  const { data } = await api.get('/announcements')
-  const topRightAnnouncements = data?.data?.['top-right']
-
-  if (!Array.isArray(topRightAnnouncements)) {
-    throw new Error('A resposta da API não contém a lista de anúncios top-right.')
-  }
-
+  const topRightAnnouncements = await getAnnouncements('top-right')
   announcements.value = topRightAnnouncements.filter((announcement) => (
     announcement && (
       announcement.path_image
