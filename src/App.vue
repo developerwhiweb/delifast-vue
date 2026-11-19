@@ -13,6 +13,7 @@
       resolveApiAssetUrl,
     } from '@/services/api'
     import { normalizeProduct } from '@/services/products'
+    import { ensureStoreIsOpen, StoreClosedError } from '@/utils/storeHours'
     
     // Componentes
     import Aside from '@/components/Aside.vue'
@@ -208,11 +209,23 @@
     }
 
     // Função para lidar com o re-pedido - VERSÃO COMPLETA CORRIGIDA
-    const handleReorder = (order) => {
-      console.log('🎯 Reordenando pedido completo:', order.id)
-      
+    const handleReorder = async (order) => {
       if (!order || !order.items || order.items.length === 0) {
         toast.error('Erro ao reordenar: pedido inválido')
+        return
+      }
+
+      console.log('🎯 Reordenando pedido completo:', order.id)
+
+      try {
+        await ensureStoreIsOpen()
+      } catch (error) {
+        if (error instanceof StoreClosedError) {
+          toast.warning(error.message)
+        } else {
+          console.error('Não foi possível verificar o horário de funcionamento.', error)
+          toast.error(error.message || 'Não foi possível verificar o horário de funcionamento.')
+        }
         return
       }
       
@@ -465,7 +478,19 @@
     }
 
     // Função para adicionar combo ao carrinho
-    const addComboToCart = (combo, selections = {}) => {
+    const addComboToCart = async (combo, selections = {}) => {
+      try {
+        await ensureStoreIsOpen()
+      } catch (error) {
+        if (error instanceof StoreClosedError) {
+          toast.warning(error.message)
+        } else {
+          console.error('Não foi possível verificar o horário de funcionamento.', error)
+          toast.error(error.message || 'Não foi possível verificar o horário de funcionamento.')
+        }
+        return
+      }
+
       const comboItem = prepareComboForCart(combo, selections)
       cart.add(comboItem)
       toast.success(`${combo.name} adicionado ao carrinho! Economia de R$ ${combo.savings?.toFixed(2) || '0,00'}`, {
@@ -476,7 +501,19 @@
     // ========== FUNÇÕES PARA PRODUTOS NORMAIS ==========
 
     // Função para adicionar produto normal ao carrinho
-    function addToCart(product, customizations = {}) {
+    async function addToCart(product, customizations = {}) {
+      try {
+        await ensureStoreIsOpen()
+      } catch (error) {
+        if (error instanceof StoreClosedError) {
+          toast.warning(error.message)
+        } else {
+          console.error('Não foi possível verificar o horário de funcionamento.', error)
+          toast.error(error.message || 'Não foi possível verificar o horário de funcionamento.')
+        }
+        return
+      }
+
       const cartItem = {
         id: `${product.id}_${Date.now()}`,
         productId: product.id,
@@ -519,11 +556,11 @@
     }
 
     // Função unificada para adicionar ao carrinho (produto ou combo)
-    const addItemToCart = (item, selections = {}) => {
+    const addItemToCart = async (item, selections = {}) => {
       if (isCombo(item)) {
-        addComboToCart(item, selections)
+        await addComboToCart(item, selections)
       } else {
-        addToCart(item, selections)
+        await addToCart(item, selections)
       }
     }
 

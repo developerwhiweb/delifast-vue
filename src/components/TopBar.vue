@@ -382,7 +382,8 @@
   import ProfileModal from '@/components/Profile.vue'
   import ProductSearch from '@/components/ProductSearch.vue'
   import fallbackLogo from '@/assets/images/logo.png'
-  import { getContacts, getTenantConfig, resolveApiAssetUrl } from '@/services/api'
+  import { getTenantConfig, resolveApiAssetUrl } from '@/services/api'
+  import { getStoreSchedule } from '@/utils/storeHours'
   import { groupOpeningHours, isStoreOpenAt } from '@/utils/openingHours'
 
   const toast = useToast()
@@ -513,44 +514,12 @@
       : ''
   })
 
-  const isValidTime = (time) => (
-    typeof time === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)
-  )
-
   const loadOpeningHours = async () => {
     try {
-      const contacts = await getContacts()
+      const { contacts, openingHours: schedule } = await getStoreSchedule()
       contactDetails.value = contacts[0] || null
 
-      if (!contacts.length) {
-        openingHours.value = []
-        return
-      }
-
-      const schedule = contactDetails.value.opening_hours
-      if (!Array.isArray(schedule) || schedule.length !== 7) {
-        throw new Error('A resposta de /contacts não contém os horários dos sete dias.')
-      }
-
-      const days = new Set()
-      openingHours.value = schedule.map((hour) => {
-        const dayOfWeek = Number(hour?.day_of_week)
-        const isClosed = hour?.is_closed
-
-        if (
-          !Number.isInteger(dayOfWeek)
-          || dayOfWeek < 1
-          || dayOfWeek > 7
-          || days.has(dayOfWeek)
-          || typeof isClosed !== 'boolean'
-          || (!isClosed && (!isValidTime(hour.open_time) || !isValidTime(hour.close_time)))
-        ) {
-          throw new Error('A resposta de /contacts contém um horário de funcionamento inválido.')
-        }
-
-        days.add(dayOfWeek)
-        return { ...hour, day_of_week: dayOfWeek, is_closed: isClosed }
-      }).sort((first, second) => first.day_of_week - second.day_of_week)
+      openingHours.value = schedule
     } catch (error) {
       console.error('Não foi possível carregar os horários de funcionamento da API.', error)
       openingHours.value = []

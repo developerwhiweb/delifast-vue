@@ -349,7 +349,7 @@
                                 class="btn-plus"
                                 :disabled="!cart.canIncrease(item.id)"
                                 :title="cart.canIncrease(item.id) ? 'Aumentar quantidade' : 'Limite de estoque atingido'"
-                                @click.stop="cart.increase(item.id)"
+                                @click.stop="increaseCartItem(item)"
                             >+</button>
                         </div>
                         
@@ -491,6 +491,7 @@
     import { createOrderWhatsAppUrl, formatOrderWhatsAppMessage } from '@/utils/orderWhatsApp'
     import { buildCouponValidationItem } from '@/utils/couponPayload'
     import { refreshProductStocks, validateCartStock } from '@/utils/productStock'
+    import { ensureStoreIsOpen, StoreClosedError } from '@/utils/storeHours'
 
     const toast = useToast()
     const cart = useCartStore()
@@ -525,6 +526,25 @@
         Boolean(appliedCoupon.value)
         && couponCode.value.trim().toUpperCase() === appliedCoupon.value.code.toUpperCase()
     ))
+
+    const reportStoreHoursError = (error) => {
+        if (error instanceof StoreClosedError) {
+            toast.warning(error.message)
+            return
+        }
+
+        console.error('Não foi possível verificar o horário de funcionamento.', error)
+        toast.error(error.message || 'Não foi possível verificar o horário de funcionamento.')
+    }
+
+    const increaseCartItem = async (item) => {
+        try {
+            await ensureStoreIsOpen()
+            cart.increase(item.id)
+        } catch (error) {
+            reportStoreHoursError(error)
+        }
+    }
     const isCashChangeValid = computed(() => {
         if (selectedPaymentMethod.value !== 'cash') return true
         if (!cashChange.value) return false
@@ -1083,6 +1103,21 @@
             }
             return
         }
+
+        isSubmitting.value = true
+        try {
+            await ensureStoreIsOpen({ force: true })
+        } catch (error) {
+            isSubmitting.value = false
+            reportStoreHoursError(error)
+            return
+        }
+
+        if (!canConfirm.value) {
+            isSubmitting.value = false
+            toast.warning('O carrinho foi alterado. Confira os dados do pedido e tente novamente.')
+            return
+        }
         
         const couponForWhatsApp = appliedCoupon.value
             ? {
@@ -1145,13 +1180,13 @@
             })
         }
 
-        isSubmitting.value = true
         const whatsappWindow = typeof window !== 'undefined'
             ? window.open('about:blank', '_blank')
             : null
         try {
             const latestProducts = await refreshProductStocks(cart)
             validateCartStock(cart.items, latestProducts)
+            await ensureStoreIsOpen({ force: true })
 
             const response = await createOrder(orderData)
             const savedOrder = response.data?.data
@@ -1190,8 +1225,10 @@
         } catch (error) {
             whatsappWindow?.close()
             console.error('Não foi possível salvar o pedido na API.', error)
+            const storeHoursError = error.response?.data?.errors?.store_hours?.[0]
             toast.error(
-                error.response?.data?.message
+                storeHoursError
+                    || error.response?.data?.message
                     || error.message
                     || 'Não foi possível finalizar seu pedido.'
             )

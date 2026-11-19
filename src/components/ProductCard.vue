@@ -80,6 +80,7 @@
   import { useCartStore } from '@/stores/useCartStore'
   import { useToast } from 'vue-toastification'
   import { refreshProductStocks } from '@/utils/productStock'
+  import { ensureStoreIsOpen, StoreClosedError } from '@/utils/storeHours'
 
   const props = defineProps({
     product: Object
@@ -213,7 +214,9 @@
 
     isRefreshingStock.value = true
     try {
+      await ensureStoreIsOpen()
       await refreshProductStocks(cart, props.product.id)
+      await ensureStoreIsOpen()
 
       if (!cart.canAdd(props.product)) {
         toast.warning(stockLimitMessage.value)
@@ -226,8 +229,12 @@
         cart.add(prepareSimpleProduct())
       }
     } catch (error) {
-      console.error('Não foi possível verificar o estoque do produto.', error)
-      toast.error('Não foi possível verificar o estoque. Tente novamente.')
+      if (error instanceof StoreClosedError) {
+        toast.warning(error.message)
+      } else {
+        console.error('Não foi possível verificar a disponibilidade do produto.', error)
+        toast.error(error.message || 'Não foi possível verificar a disponibilidade. Tente novamente.')
+      }
     } finally {
       isRefreshingStock.value = false
     }
