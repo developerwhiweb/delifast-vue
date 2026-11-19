@@ -27,7 +27,7 @@
     </div>
     
     <!-- Horários e contato -->
-    <div class="d-none d-md-flex flex-row flex-wrap align-items-start gap-2 text-secondary small mt-0 mt-md-5">
+    <div class="opening-contact d-none d-md-flex flex-row flex-wrap align-items-start justify-content-md-between gap-2 text-secondary small mt-0 mt-md-5">
       
       <div class="horous">
         <div v-if="groupedOpeningHours.length" class="d-flex flex-column gap-1">
@@ -45,8 +45,19 @@
         <span v-else class="text-grey">Horário não informado</span>
       </div>
 
+      <button
+        type="button"
+        class="opening-hours-trigger btn btn-sm"
+        aria-haspopup="dialog"
+        aria-controls="tablet-opening-hours"
+        @click="showOpeningHoursModal = true"
+      >
+        <i class="bi bi-clock-history" aria-hidden="true"></i>
+        <span>Horários</span>
+      </button>
+
       <div class="d-flex align-items-center gap-2 px-2">
-        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg class="d-md-none" width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M12.276 15L11.6145 14.991L11.424 14.955C11.274 14.9265 11.115 14.898 10.9635 14.8605C10.095 14.6446 9.22797 14.2457 8.23348 13.6084C7.01398 12.8256 5.81248 11.8253 4.45199 10.4592C3.38228 9.41612 2.41719 8.27096 1.5705 7.04006C0.851998 5.97084 0.421499 5.09057 0.1725 4.16681C0.1215 3.98085 0.0869998 3.7964 0.0539998 3.61795C0.0389999 3.54147 0.0254999 3.46799 0.0105 3.39001L0 3.29553V2.76167L0.0359999 2.67469C0.299999 2.03586 0.749998 1.58447 1.191 1.17808C1.512 0.878156 1.85099 0.605227 2.16899 0.351793C2.35931 0.195921 2.58393 0.087452 2.82436 0.0353103C3.0648 -0.0168314 3.31418 -0.0111557 3.55199 0.0518703C3.86158 0.125386 4.13049 0.316266 4.30199 0.584232L4.71299 1.20357C5.14199 1.8574 5.58448 2.53223 6.03448 3.18456C6.20578 3.42104 6.30835 3.70027 6.33085 3.99138C6.35335 4.28249 6.29491 4.57415 6.16198 4.83413C6.08248 5.00959 5.99098 5.17154 5.90248 5.329L5.78998 5.53145C5.70598 5.68141 5.62348 5.83137 5.53648 5.98134L5.81848 6.31875C6.07198 6.61867 6.33598 6.94109 6.60598 7.23201C7.34686 8.04619 8.15304 8.7985 9.01647 9.48143C9.33447 9.29698 9.66747 9.11102 10.032 8.91308C10.3967 8.69139 10.8318 8.61585 11.25 8.70163C11.3983 8.73553 11.5395 8.79544 11.667 8.87858C12.596 9.48943 13.5225 10.1028 14.4465 10.7186C14.9295 11.041 15.123 11.6979 14.9205 12.3187C14.8748 12.467 14.8059 12.6072 14.7165 12.7341C14.2352 13.4158 13.6612 14.027 13.011 14.5501C12.8692 14.6566 12.7187 14.751 12.561 14.832C12.504 14.8635 12.4485 14.8935 12.393 14.925L12.276 15ZM11.7525 14.0387H12.0195L12.1005 13.9953C12.2115 13.9389 12.3179 13.8737 12.4185 13.8003C12.9984 13.3286 13.5098 12.7784 13.938 12.1657C13.9671 12.1192 13.9894 12.0687 14.004 12.0158C14.0396 11.9327 14.0497 11.8409 14.0332 11.752C14.0166 11.6631 13.9741 11.5811 13.911 11.5164C12.988 10.9016 12.0635 10.2897 11.1375 9.68088C11.1057 9.66066 11.0707 9.64595 11.034 9.63739C10.8436 9.60479 10.648 9.64551 10.4865 9.75136C10.083 9.9688 9.72147 10.1728 9.38097 10.3737C9.25545 10.4554 9.1071 10.4948 8.95759 10.4861C8.80808 10.4775 8.66526 10.4213 8.54998 10.3257C7.59896 9.58893 6.71364 8.77107 5.90398 7.88134C5.61448 7.57092 5.34298 7.24401 5.08049 6.92759C4.94099 6.76413 4.79999 6.60217 4.66799 6.44022C4.5714 6.33391 4.51318 6.19836 4.50258 6.05514C4.49197 5.91192 4.52961 5.76928 4.60949 5.64992C4.72799 5.45497 4.83749 5.25702 4.94699 5.06057L5.06399 4.85213C5.14649 4.70217 5.22299 4.5702 5.28448 4.43374C5.34799 4.32546 5.37776 4.20072 5.37002 4.07545C5.36227 3.95017 5.31734 3.83005 5.24098 3.73042C4.79099 3.06909 4.34099 2.38827 3.90749 1.73144L3.50699 1.11659C3.48719 1.08411 3.46081 1.05613 3.42956 1.03443C3.3983 1.01274 3.36285 0.99782 3.32549 0.990627C3.23099 0.962045 3.13089 0.957219 3.03408 0.976577C2.93727 0.995935 2.84673 1.03888 2.77049 1.1016C2.47049 1.34604 2.14199 1.60847 1.84349 1.8844C1.4895 2.20981 1.1565 2.53823 0.961497 2.95512V3.24604C0.974997 3.31053 0.986997 3.37501 0.998997 3.43949C1.0305 3.60745 1.0605 3.76491 1.101 3.91487C1.32 4.72616 1.7115 5.52395 2.36849 6.5017C3.181 7.68182 4.1069 8.77975 5.13299 9.77985C6.44998 11.101 7.59448 12.0533 8.75397 12.7986C9.65397 13.3789 10.434 13.7373 11.196 13.9278C11.328 13.9608 11.463 13.9848 11.598 14.0088L11.7525 14.0387Z" fill="var(--primary)"/>
         </svg>
         <a
@@ -55,7 +66,8 @@
           class="horous-day text-grey text-decoration-none"
           :aria-label="`Ligar para ${phoneContact.value}`"
         >
-          Fale Conosco: {{ phoneContact.value }}
+          Fale Conosco: <br> <small class="phone-contact">{{ phoneContact.value }}</small>
+          
         </a>
         <span v-else class="horous-day text-grey">Fale Conosco</span>
       </div>
@@ -164,6 +176,44 @@
     :error="props.catalogError"
     @select="emit('open-product', $event)"
   />
+
+  <div
+    v-if="showOpeningHoursModal"
+    class="opening-hours-overlay"
+    @click.self="showOpeningHoursModal = false"
+  >
+    <section
+      id="tablet-opening-hours"
+      class="opening-hours-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="tablet-opening-hours-title"
+    >
+      <header class="opening-hours-dialog-header">
+        <h2 id="tablet-opening-hours-title">Horário de Funcionamento</h2>
+        <button
+          type="button"
+          class="btn-close"
+          aria-label="Fechar horários"
+          @click="showOpeningHoursModal = false"
+        ></button>
+      </header>
+      <div v-if="groupedOpeningHours.length" class="d-flex flex-column gap-3">
+        <div
+          v-for="group in groupedOpeningHours"
+          :key="group.key"
+          class="d-flex align-items-start gap-2"
+        >
+          <i class="bi bi-clock-history mt-1 text-primary" aria-hidden="true"></i>
+          <span class="d-flex flex-column text-grey">
+            {{ group.daysLabel }}
+            <i class="fst-normal">{{ group.hoursLabel }}</i>
+          </span>
+        </div>
+      </div>
+      <p v-else class="text-grey mb-0">Horário não informado</p>
+    </section>
+  </div>
 
  <!-- ================= MENU MOBILE MELHORADO ================= -->
 <div 
@@ -408,6 +458,7 @@
   const cartStore = useCartStore()
   const userStore = useUserStore()
   const showTabletSearch = ref(false)
+  const showOpeningHoursModal = ref(false)
   const props = defineProps({
     products: {
       type: Array,
@@ -844,7 +895,9 @@
 </script>
 
 <style scoped>
-
+  .phone-contact{
+    font-size: clamp(0.625rem, 0.85vw, 0.9rem);
+  }
   .reset-button {
     all: unset;
     cursor: pointer;
@@ -891,6 +944,10 @@
   }
 
   .topbar-search-trigger {
+    display: none;
+  }
+
+  .opening-hours-trigger {
     display: none;
   }
 
@@ -1076,6 +1133,54 @@
   }
 
   @media (min-width: 768px) and (max-width: 1280px) {
+    .top-bar {
+      display: grid !important;
+      grid-template-columns: minmax(210px, 1fr) minmax(180px, 1fr) auto;
+      align-items: center !important;
+      gap: 12px !important;
+      flex-wrap: nowrap !important;
+    }
+
+    .opening-contact {
+      align-items: center !important;
+      flex-wrap: nowrap !important;
+      gap: 8px !important;
+      min-width: 0;
+      margin-top: 0 !important;
+    }
+
+    .opening-contact .horous {
+      display: none;
+    }
+
+    .opening-hours-trigger {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 0;
+      border: 0;
+      color: var(--primary);
+      white-space: nowrap;
+    }
+
+    .opening-contact > .d-flex {
+      min-width: 0;
+      padding-right: 0 !important;
+      padding-left: 0 !important;
+      white-space: nowrap;
+    }
+
+    .right-container {
+      width: max-content !important;
+      max-width: 100%;
+      flex-wrap: nowrap !important;
+      justify-content: flex-end !important;
+      gap: 12px !important;
+      margin-top: 0 !important;
+      margin-bottom: 0 !important;
+    }
+
     .topbar-desktop-search {
       display: none !important;
     }
@@ -1089,6 +1194,40 @@
       color: var(--primary);
       font-size: 1.25rem;
     }
+
+  .opening-hours-overlay {
+    position: fixed;
+    z-index: 12001;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.55);
+  }
+
+  .opening-hours-dialog {
+    width: min(100%, 380px);
+    padding: 20px;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+  }
+
+  .opening-hours-dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .opening-hours-dialog-header h2 {
+    margin: 0;
+    color: #212529;
+    font-size: 1rem;
+    font-weight: 700;
+  }
   }
 
   @media (max-width: 768px) {
@@ -1106,6 +1245,10 @@
     }
   }
   @media (max-width: 680px) {
+    .opening-hours-trigger {
+      display: none;
+    }
+
     .d-flex.justify-content-center.justify-content-md-start.align-items-center.mt-0.mt-md-2 small{
       font-size: 0.75rem !important;
     }

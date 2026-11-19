@@ -884,8 +884,11 @@
     }
   }
   .carousel-breakout {
-    width: 90vw;
+    /* width: 90vw;
     margin-left: calc(-30vw + 50%);
+    margin-top: -40px; */
+    width: 100vw;
+    margin-left: calc(-33.2vw + 50%);
     margin-top: -40px;
   }
 

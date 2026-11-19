@@ -217,7 +217,7 @@
                             @change="updateComboItemSelection(item.id, choice.id)"
                           />
                           <label class="form-check-label">
-                            {{ choice.name }}
+                            {{ choice.quantity }}x {{ choice.name }}
                             <span v-if="choice.price > 0" class="text-primary">(+ R$ {{ formatPrice(choice.price) }})</span>
                             <small v-if="choice.description" class="text-muted d-block">{{ choice.description }}</small>
                           </label>
