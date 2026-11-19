@@ -116,7 +116,7 @@
             <!-- SEÇÃO: Itens do Combo -->
             <div class="col-md-12" v-if="product?.isCombo && product?.comboItems?.length">
               <div class="mb-4">
-                <h6 class="fw-bold text-primary text-center mb-4">
+                <h6 class="fw-bold text-primary text-start mb-4">
                   Itens do Combo
                 </h6>
 
@@ -244,7 +244,7 @@
             <!-- SEÇÃO: Addons do Combo -->
             <div class="col-md-12" v-if="product?.isCombo && product?.comboAddons?.length">
               <div class="mb-4">
-                <h6 class="fw-bold text-primary text-center mb-4">
+                <h6 class="fw-bold text-primary text-start mb-4">
                   Adicionais Extras
                 </h6>
 
@@ -290,7 +290,7 @@
                 :key="getOptionGroupKey(group, groupIndex)"
                 class="mb-4"
               >
-                <h6 class="fw-bold text-primary text-center mb-4">
+                <h6 class="fw-bold text-primary text-start mb-4">
                   {{ group.title }}
                   <span v-if="group.required" class="badge bg-danger ms-2">Obrigatório</span>
                 </h6>
@@ -298,15 +298,18 @@
                 <div
                   v-for="item in group.items"
                   :key="item.id"
-                  class="d-flex align-items-center border gap-1 rounded p-0 mb-2 option-item pe-3"
+                  class="d-flex align-items-start gap-1 p-0 px-2 mb-2 option-item pe-3 lh"
                   :class="{ active: isOptionSelected(group, item, groupIndex) }"
                   @click="handleOptionClick(group, item, groupIndex)"
                 >
-                  <img
-                    :src="item.image || product?.images?.[0]"
-                    class="me-3 cover"
-                    width="105"
-                    height="105"
+                  <input
+                    class="mt-1"
+                    :type="group.type === 'checkbox' ? 'checkbox' : 'radio'"
+                    :name="`product_option_${getOptionGroupKey(group, groupIndex)}`"
+                    :checked="isOptionSelected(group, item, groupIndex)"
+                    :disabled="group.type === 'checkbox' && isOptionLimitReached(group, item, groupIndex)"
+                    @click.stop
+                    @change="handleOptionChange(group, item, groupIndex, $event.target.checked)"
                   />
 
                   <div class="flex-grow-1">
@@ -316,22 +319,13 @@
                         Recomendado
                       </span>
                     </div>
-                    <small class="text-muted">
+                    <small class="text-muted desc">
                       {{ item.description }}
                     </small>
                     <div v-if="item.price > 0" class="text-primary small fw-bold">
                       {{ group.isSizeOption || group.priceMode === 'replace' ? '' : '+' }}R$ {{ formatPrice(item.price) }}
                     </div>
-                  </div>
-
-                  <input
-                    :type="group.type === 'checkbox' ? 'checkbox' : 'radio'"
-                    :name="`product_option_${getOptionGroupKey(group, groupIndex)}`"
-                    :checked="isOptionSelected(group, item, groupIndex)"
-                    :disabled="group.type === 'checkbox' && isOptionLimitReached(group, item, groupIndex)"
-                    @click.stop
-                    @change="handleOptionChange(group, item, groupIndex, $event.target.checked)"
-                  />
+                  </div>                  
                 </div>
               </div>
             </div>
@@ -339,7 +333,7 @@
             <!-- Opção de Tamanhos -->
             <div class="col-md-12" v-if="!product?.isCombo && hasSizes">
               <div class="mb-4">
-                <h6 class="fw-bold text-primary text-center mb-4">
+                <h6 class="fw-bold text-primary text-start mb-4">
                   Tamanhos
                   <span v-if="sizesRequired" class="badge bg-danger ms-2">Obrigatório</span>
                 </h6>
@@ -347,7 +341,7 @@
                 <div
                   v-for="size in product?.customization?.sizes"
                   :key="size.id"
-                  class="d-flex align-items-center border gap-1 rounded p-0 mb-2 option-item pe-3"
+                  class="d-flex align-items-center gap-1 p-0 mb-2 option-item pe-3"
                   :class="{ active: selectedSize?.id === size.id }"
                   @click="selectedSize = size"
                 >
@@ -378,7 +372,7 @@
             <!-- Sabores -->
             <div class="col-md-12" v-if="!product?.isCombo && hasFlavors">
               <div class="mb-4">
-                <h6 class="fw-bold text-primary text-center mb-4">
+                <h6 class="fw-bold text-primary text-start mb-4">
                   Sabores (máx. {{ maxFlavors }})
                 </h6>
 
@@ -1570,6 +1564,13 @@ watch(
 </script>
 
 <style scoped>
+.lh{
+  font-size: 0.875rem;
+  line-height: 21px;
+}
+small.desc{
+  font-size: 0.75rem;
+}
 .badge-spec {
   font-size: 0.75rem;
   font-weight: 400;

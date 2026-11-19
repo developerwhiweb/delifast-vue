@@ -340,10 +340,7 @@
                                 class="mx-2 d-flex flex-column align-items-center"
                                 :title="item.stock?.control ? `${cart.getProductQuantity(item)} de ${item.stock.quantity} unidades no carrinho` : null"
                             >
-                                {{ item.quantity }}
-                                <small v-if="item.stock?.control" class="stock-quantity">
-                                    {{ cart.getProductQuantity(item) }}/{{ item.stock.quantity }}
-                                </small>
+                                {{ item.quantity }}                                
                             </span>
                             <button
                                 class="btn-plus"
@@ -361,6 +358,10 @@
                             Excluir
                         </button>    
                     </div>
+                    <small class="stock-info">
+                        <i class="fas fa-box-open" aria-hidden="true"></i>
+                        {{ item.stock.quantity - cart.getProductQuantity(item) }} unidades disponíveis
+                    </small>
                 </div>
             </div>
 
@@ -1319,6 +1320,10 @@
 </script>
 
 <style scoped>
+.stock-info{
+    font-size: 0.75rem;
+    font-weight: 700;
+}
 .avatar-user{
     width: 16px;
     height: 16px;
