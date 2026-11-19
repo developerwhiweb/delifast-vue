@@ -475,4 +475,21 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleDocument
   }
 
 }
+
+@media (min-width: 768px) and (max-width: 1280px) {
+  .product-search-mobile-overlay {
+    padding: 0;
+  }
+
+  .product-search-mobile-panel {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    padding: max(24px, env(safe-area-inset-top))
+      max(24px, env(safe-area-inset-right))
+      max(24px, env(safe-area-inset-bottom))
+      max(24px, env(safe-area-inset-left));
+    border-radius: 0;
+  }
+}
 </style>

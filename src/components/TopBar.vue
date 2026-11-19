@@ -70,8 +70,17 @@
         Locais de entrega
       </button>
 
+      <button
+        type="button"
+        class="btn topbar-search-trigger"
+        aria-label="Buscar produtos"
+        @click="showTabletSearch = true"
+      >
+        <i class="bi bi-search" aria-hidden="true"></i>
+      </button>
+
       <!-- Campo de busca -->
-      <div class=" d-none d-md-block position-relative flex-grow-1 search-wrapper mt-0">
+      <div class="position-relative flex-grow-1 search-wrapper mt-0 topbar-desktop-search">
         <ProductSearch
           mode="desktop"
           :products="props.products"
@@ -146,6 +155,15 @@
       </div>
     </div>
   </div>
+
+  <ProductSearch
+    v-model="showTabletSearch"
+    mode="mobile"
+    :products="props.products"
+    :loading="props.catalogLoading"
+    :error="props.catalogError"
+    @select="emit('open-product', $event)"
+  />
 
  <!-- ================= MENU MOBILE MELHORADO ================= -->
 <div 
@@ -389,6 +407,7 @@
   const toast = useToast()
   const cartStore = useCartStore()
   const userStore = useUserStore()
+  const showTabletSearch = ref(false)
   const props = defineProps({
     products: {
       type: Array,
@@ -871,6 +890,10 @@
     width: 100%;
   }
 
+  .topbar-search-trigger {
+    display: none;
+  }
+
   .horous-day {
     font-size: clamp(0.75rem, 0.85vw, 0.9rem);
   }
@@ -1049,6 +1072,22 @@
   @media (max-width: 992px) {
     .search-wrapper {
       max-width: 100%;
+    }
+  }
+
+  @media (min-width: 768px) and (max-width: 1280px) {
+    .topbar-desktop-search {
+      display: none !important;
+    }
+
+    .topbar-search-trigger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.25rem;
+      border: 0;
+      color: var(--primary);
+      font-size: 1.25rem;
     }
   }
 
