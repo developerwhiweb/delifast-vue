@@ -92,9 +92,9 @@
             </p>
 
             <div class="mt-2">
-              <h4 class="fw-bold">
+              <h5 class="fw-bold">
                 R$ {{ formatPrice(finalPrice) }}
-              </h4>
+              </h5>
 
               <div class="text-muted small" v-if="currentOldPrice">
                 <s>R$ {{ formatPrice(currentOldPrice) }}</s>
@@ -109,12 +109,12 @@
               </div>
             </div>
 
-            <div class="row mt-3">
-              <small class="mb-1 fw-semibold">Quantidade</small>
+            <div class="row mt-4">
+              <small class="mb-2 fw-semibold">Quantidade</small>
               <div class="d-flex align-items-center justify-content-center gap-3 mb-2">
                   <button
                     type="button"
-                    class="btn btn-md btn-outline-danger"
+                    class="btn btn-d btn-outline-danger"
                     aria-label="Diminuir quantidade"
                     :disabled="productQuantity <= 1"
                     @click="productQuantity--"
@@ -132,9 +132,26 @@
                     +
                   </button>
                 </div>
-                <p class="small fw-medium text-muted mb-2" role="status">
+                <p class="small fw-medium text-muted mb-2 d-flex justify-content-center" role="status">
+                  <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      class="me-1"
+                      aria-hidden="true"
+                  >
+                      <path d="m21 8-9-5-9 5v8l9 5 9-5V8Z"/>
+                      <path d="m3.3 7 8.7 5 8.7-5"/>
+                      <path d="M12 22V12"/>
+                  </svg>
                   {{ stockAvailabilityMessage }}
-                </p>
+              </p>
               </div>
           </div>
 
@@ -1649,7 +1666,8 @@ small.desc{
 }
 
 .scroll {
-  height: 450px;
+  /* height: 450px; */
+  height: 565px;
   overflow-y: auto;
   padding-right: 8px;
 }
