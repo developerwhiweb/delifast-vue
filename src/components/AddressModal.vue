@@ -863,7 +863,10 @@
     }
     .progress-bar{
       background: var(--primary) !important;
-      height: 6rem !important;
+      
+    }
+    .progress{
+      height: 10px !important;
     }
     .modal-title{
         font-size: clamp(1rem, 1.125vw, 1.125rem);
