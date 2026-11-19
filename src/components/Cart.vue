@@ -288,7 +288,9 @@
                                 </span>
                             </div>
                             <div v-else>
-                                <span class="text-success ms-2">{{ selection.choice?.name || selection.selected }}</span>
+                                <span class="text-success ms-2">
+                                    {{ selection.quantity || 1 }}x {{ selection.choice?.name || selection.selected }}
+                                </span>
                             </div>
                         </div>
                     </div>

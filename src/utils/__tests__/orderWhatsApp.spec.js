@@ -99,6 +99,34 @@ describe('order WhatsApp message', () => {
     expect(message).toContain('💳 *Pagamento:* Cartão de crédito/débito')
   })
 
+  it('shows the chosen quantity of a single combo option without changing combo quantity', () => {
+    const message = formatOrderWhatsAppMessage({
+      customer: { name: 'Ana' },
+      items: [{
+        name: 'Combo',
+        quantity: 1,
+        unit_price: 14,
+        total_price: 14,
+        details: {
+          isCombo: true,
+          comboItems: [{ id: 1, name: 'Hambúrguer', quantity: 1 }],
+          itemSelections: {
+            1: {
+              choice: { name: 'Arretado', price: 2 },
+              quantity: 2,
+              price: 4,
+            },
+          },
+        },
+      }],
+    }, { number: 'PED-SINGLE-QUANTITY' })
+
+    expect(message).toContain('*1x Combo*')
+    expect(message).toContain('• 2x Hambúrguer (Arretado)')
+    expect(message).toContain('• 2x Hambúrguer Arretado: R$ 2,00 cada — R$ 4,00')
+    expect(message).toContain('Adicionais: R$ 4,00')
+  })
+
   it('creates a WhatsApp link and reports when the contact has no valid number', () => {
     expect(createOrderWhatsAppUrl('(71) 99999-1234', 'Pedido confirmado'))
       .toBe('https://wa.me/5571999991234?text=Pedido%20confirmado')

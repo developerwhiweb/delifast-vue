@@ -871,7 +871,7 @@
 }
   .list-product{
       width: 69vw;
-      margin-left: calc(-30vw + 50%);
+      margin-left: calc(-33.3vw + 50%);
   }
   .content-no-highlights .list-product{
       width: 100%;

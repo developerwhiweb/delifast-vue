@@ -36,9 +36,9 @@
   .product-item {
     width: 100%;
   }
-  ::v-deep(.product-card img) {
+  /* ::v-deep(.product-card img) {
     height: 200px;
-  }
+  } */
   ::v-deep(h6) {
     font-size: clamp(0.875rem, 0.938rem, 0.938rem);
   }

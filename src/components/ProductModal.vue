@@ -201,26 +201,75 @@
                           {{ choice.name }} {{ choice.price > 0 ? `(+ R$ ${formatPrice(choice.price)})` : '' }}
                         </option>
                       </select>
+                      <div
+                        v-if="getSelectedComboChoice(item)?.maxPerOption"
+                        class="d-flex align-items-center gap-2 mt-2"
+                      >
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-danger"
+                          :disabled="isDecreaseDisabled(item.id, getSelectionValue(item.id))"
+                          @click="decreaseChoiceQuantity(item.id, getSelectionValue(item.id))"
+                        >-</button>
+                        <span class="fw-bold min-width-30 text-center">
+                          {{ getChoiceQuantity(item.id, getSelectionValue(item.id)) }}
+                        </span>
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-success"
+                          :disabled="isIncreaseDisabled(item.id, getSelectionValue(item.id))"
+                          @click="increaseChoiceQuantity(item.id, getSelectionValue(item.id))"
+                        >+</button>
+                      </div>
                     </div>
                     
                     <!-- RADIO (botões de opção) -->
                     <div v-if="item.options.type === 'radio'" class="mb-2">
                       <label class="form-label fw-semibold small">{{ item.options.title }}</label>
                       <div class="d-flex flex-column gap-1">
-                        <div v-for="choice in item.options.choices" :key="choice.id" class="form-check">
-                          <input
-                            type="radio"
-                            class="form-check-input"
-                            :name="`combo_item_${item.id}`"
-                            :value="choice.id"
-                            :checked="getSelectionValue(item.id) === choice.id"
-                            @change="updateComboItemSelection(item.id, choice.id)"
-                          />
-                          <label class="form-check-label">
-                            {{ choice.quantity }}x {{ choice.name }}
-                            <span v-if="choice.price > 0" class="text-primary">(+ R$ {{ formatPrice(choice.price) }})</span>
-                            <small v-if="choice.description" class="text-muted d-block">{{ choice.description }}</small>
-                          </label>
+                        <div
+                          v-for="choice in item.options.choices"
+                          :key="choice.id"
+                          class="d-flex align-items-center justify-content-between gap-2"
+                        >
+                          <div class="form-check">
+                            <input
+                              type="radio"
+                              class="form-check-input"
+                              :name="`combo_item_${item.id}`"
+                              :value="choice.id"
+                              :checked="String(getSelectionValue(item.id)) === String(choice.id)"
+                              @change="updateComboItemSelection(item.id, choice.id)"
+                            />
+                            <label class="form-check-label">
+                              <span
+                                v-if="getChoiceQuantity(item.id, choice.id) > 0"
+                                class="text-primary me-1"
+                              >
+                                {{ getChoiceQuantity(item.id, choice.id) }}x
+                              </span>
+                              {{ choice.name }}
+                              <span v-if="choice.price > 0" class="text-primary">(+ R$ {{ formatPrice(choice.price) }})</span>
+                              <small v-if="choice.description" class="text-muted d-block">{{ choice.description }}</small>
+                            </label>
+                          </div>
+                          <div v-if="choice.maxPerOption" class="d-flex align-items-center gap-2">
+                            <button
+                              type="button"
+                              class="btn btn-sm btn-outline-danger"
+                              :disabled="isDecreaseDisabled(item.id, choice.id)"
+                              @click="decreaseChoiceQuantity(item.id, choice.id)"
+                            >-</button>
+                            <span class="fw-bold min-width-30 text-center">
+                              {{ getChoiceQuantity(item.id, choice.id) }}
+                            </span>
+                            <button
+                              type="button"
+                              class="btn btn-sm btn-outline-success"
+                              :disabled="isIncreaseDisabled(item.id, choice.id)"
+                              @click="increaseChoiceQuantity(item.id, choice.id)"
+                            >+</button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -702,7 +751,7 @@
         if (!selection) return
         if (selection.type === 'select' || selection.type === 'radio') {
           if (selection.choicePrice) {
-            price += selection.choicePrice
+            price += selection.choicePrice * (selection.choiceQuantity || 1)
           }
         } else if (selection.type === 'checkbox' || selection.type === 'multicheckbox') {
           Object.entries(selection.quantities || {}).forEach(([choiceId, qty]) => {
@@ -987,6 +1036,10 @@
     return comboItemSelections.value[itemId]?.selected || null
   }
 
+  const getSelectedComboChoice = (item) => item?.options?.choices?.find(
+    (choice) => String(choice.id) === String(getSelectionValue(item.id))
+  ) || null
+
   // Verifica se um checkbox está selecionado
   const isChoiceSelected = (itemId, choiceId) => {
     const selections = comboItemSelections.value[itemId]
@@ -1017,7 +1070,8 @@
             type: item.options.type,
             selected: defaultChoice?.id || null,
             choicePrice: defaultChoice?.price || 0,
-            choiceName: defaultChoice?.name || ''
+            choiceName: defaultChoice?.name || '',
+            choiceQuantity: defaultChoice ? 1 : 0
           }
         } else if (item.options.type === 'checkbox' || item.options.type === 'multicheckbox') {
           selections[item.id] = {
@@ -1057,13 +1111,19 @@
     const item = props.product?.comboItems?.find(i => i.id === itemId)
     if (!item) return true
     
-    const choice = item.options?.choices?.find(c => c.id === choiceId)
+    const choice = item.options?.choices?.find(
+      (candidate) => String(candidate.id) === String(choiceId)
+    )
     if (!choice) return true
     
+    const maxPerOption = choice.maxPerOption || 99
+    if (selections.type === 'select' || selections.type === 'radio') {
+      return getChoiceQuantity(itemId, choiceId) >= maxPerOption
+    }
+
     const currentQty = selections.quantities?.[choiceId] || 0
     const currentTotal = getTotalSelectionsCount(itemId)
     const maxSelections = item.options?.maxSelections || 99
-    const maxPerOption = choice.maxPerOption || 99
     
     return currentTotal >= maxSelections || currentQty >= maxPerOption
   }
@@ -1072,8 +1132,7 @@
     const selections = comboItemSelections.value[itemId]
     if (!selections) return true
     
-    const currentQty = selections.quantities?.[choiceId] || 0
-    return currentQty <= 0
+    return getChoiceQuantity(itemId, choiceId) <= 0
   }
 
   // Atualiza seleção única (select/radio)
@@ -1086,6 +1145,7 @@
       comboItemSelections.value[itemId].selected = choiceId
       comboItemSelections.value[itemId].choicePrice = choice.price || 0
       comboItemSelections.value[itemId].choiceName = choice.name
+      comboItemSelections.value[itemId].choiceQuantity = 1
       toast.success(`${item.name}: ${choice.name} selecionado!`, { timeout: 1500 })
     }
   }
@@ -1098,7 +1158,9 @@
     const selections = comboItemSelections.value[itemId]
     if (!selections) return
     
-    const choice = item.options?.choices?.find(c => c.id === choiceId)
+    const choice = item.options?.choices?.find(
+      (candidate) => String(candidate.id) === String(choiceId)
+    )
     if (!choice) return
     
     const currentTotal = getTotalSelectionsCount(itemId)
@@ -1136,8 +1198,26 @@
     const selections = comboItemSelections.value[itemId]
     if (!selections) return
     
-    const choice = item.options?.choices?.find(c => c.id === choiceId)
+    const choice = item.options?.choices?.find(
+      (candidate) => String(candidate.id) === String(choiceId)
+    )
     if (!choice) return
+
+    if (selections.type === 'select' || selections.type === 'radio') {
+      const currentQty = getChoiceQuantity(itemId, choiceId)
+      const maxPerOption = choice.maxPerOption || 99
+
+      if (currentQty >= maxPerOption) {
+        toast.warning(`Máximo de ${maxPerOption} ${choice.name} permitido!`, { timeout: 2000 })
+        return
+      }
+
+      selections.selected = choiceId
+      selections.choicePrice = choice.price || 0
+      selections.choiceName = choice.name
+      selections.choiceQuantity = currentQty + 1
+      return
+    }
     
     const currentQty = selections.quantities?.[choiceId] || 0
     const currentTotal = getTotalSelectionsCount(itemId)
@@ -1167,6 +1247,19 @@
     const selections = comboItemSelections.value[itemId]
     if (!selections) return
     
+    if (selections.type === 'select' || selections.type === 'radio') {
+      const currentQty = getChoiceQuantity(itemId, choiceId)
+      if (currentQty <= 1) {
+        selections.selected = null
+        selections.choicePrice = 0
+        selections.choiceName = ''
+        selections.choiceQuantity = 0
+      } else {
+        selections.choiceQuantity = currentQty - 1
+      }
+      return
+    }
+
     const currentQty = selections.quantities?.[choiceId] || 0
     
     if (currentQty <= 1) {
@@ -1195,7 +1288,16 @@
 
   // Retorna quantidade de uma escolha específica
   const getChoiceQuantity = (itemId, choiceId) => {
-    return comboItemSelections.value[itemId]?.quantities?.[choiceId] || 0
+    const selections = comboItemSelections.value[itemId]
+    if (!selections) return 0
+
+    if (selections.type === 'select' || selections.type === 'radio') {
+      return String(selections.selected) === String(choiceId)
+        ? selections.choiceQuantity || 0
+        : 0
+    }
+
+    return selections.quantities?.[choiceId] || 0
   }
 
   // Gera resumo das escolhas do item
@@ -1207,7 +1309,7 @@
     
     if (selections.type === 'select' || selections.type === 'radio') {
       if (selections.choiceName) {
-        choices.push(selections.choiceName)
+        choices.push(`${selections.choiceQuantity || 1}x ${selections.choiceName}`)
       }
     } else if (selections.type === 'checkbox' || selections.type === 'multicheckbox') {
       Object.entries(selections.quantities || {}).forEach(([choiceId, qty]) => {
@@ -1231,27 +1333,31 @@ const prepareComboSelections = () => {
     
     if (data.type === 'select' || data.type === 'radio') {
       // Busca o choice completo pelo ID
-      const choice = item.options?.choices?.find(c => c.id === data.selected)
+      const choice = item.options?.choices?.find(
+        (candidate) => String(candidate.id) === String(data.selected)
+      )
       if (choice) {
+        const quantity = data.choiceQuantity || 1
         selections[itemId] = {
           choice: {
             id: choice.id,
             name: choice.name,
             price: choice.price || 0
           },
-          quantity: 1,
-          price: choice.price || 0
+          quantity,
+          price: (choice.price || 0) * quantity
         }
       } else if (data.choiceName) {
         // Fallback se não encontrar o choice
+        const quantity = data.choiceQuantity || 1
         selections[itemId] = {
           choice: {
             id: data.selected,
             name: data.choiceName,
             price: data.choicePrice || 0
           },
-          quantity: 1,
-          price: data.choicePrice || 0
+          quantity,
+          price: (data.choicePrice || 0) * quantity
         }
       }
     } else if (data.type === 'checkbox' || data.type === 'multicheckbox') {
@@ -1502,6 +1608,7 @@ watch(
                 comboItemSelections.value[itemId].selected = selectionData.choice.id
                 comboItemSelections.value[itemId].choicePrice = selectionData.choice.price || 0
                 comboItemSelections.value[itemId].choiceName = selectionData.choice.name
+                comboItemSelections.value[itemId].choiceQuantity = selectionData.quantity || 1
               }
             }
           })
@@ -1666,14 +1773,14 @@ small.desc{
 }
 
 .scroll {
-  /* height: 450px; */
-  height: 565px;
+  height: 450px;
   overflow-y: auto;
   padding-right: 8px;
 }
 
 .image {
-  max-width: 320px;
+  max-width: 240px;
+  margin: 0 auto;
 }
 
 .z-in {

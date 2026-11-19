@@ -50,8 +50,8 @@ defineProps({
 // Breakpoints
 const breakpoints = {
   640: { slidesPerView: 1.5, slidesPerGroup: 1 },
-  768: { slidesPerView: 2.3, slidesPerGroup: 1 },
-  1024: { slidesPerView: 3.5, slidesPerGroup: 1 },
+  768: { slidesPerView: 2, slidesPerGroup: 1 },
+  1024: { slidesPerView: 3, slidesPerGroup: 1 },
   1279: { slidesPerView: 3.90, slidesPerGroup: 1 },
   1360: { slidesPerView: 3.98, slidesPerGroup: 1 },
 };
