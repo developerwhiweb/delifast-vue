@@ -119,6 +119,40 @@ describe('useCartStore', () => {
     expect(toast.warning).toHaveBeenCalled()
   })
 
+  it('adds the requested quantity without exceeding available stock', () => {
+    const cart = useCartStore()
+    const product = {
+      id: 8,
+      name: 'Lanche',
+      price: 15,
+      stock: { control: true, available: true, quantity: 3 },
+    }
+
+    cart.add({ ...product, quantity: 2 })
+    cart.add({ ...product, quantity: 2 })
+
+    expect(cart.items).toHaveLength(1)
+    expect(cart.items[0].quantity).toBe(2)
+    expect(toast.warning).toHaveBeenCalled()
+  })
+
+  it('updates the cart item to the quantity selected in the product modal', () => {
+    const cart = useCartStore()
+    const product = {
+      id: 8,
+      name: 'Lanche',
+      price: 15,
+      stock: { control: true, available: true, quantity: 3 },
+    }
+
+    cart.add(product)
+    const cartItemId = cart.items[0].id
+    cart.updateItem({ ...product, cartItemId, quantity: 2 })
+
+    expect(cart.items).toHaveLength(1)
+    expect(cart.items[0].quantity).toBe(2)
+  })
+
   it('hydrates stock limits for items already persisted in the cart', () => {
     const cart = useCartStore()
     cart.items = [{ id: 'cart-item', productId: 8, quantity: 2, name: 'Lanche' }]

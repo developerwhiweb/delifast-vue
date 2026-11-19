@@ -358,7 +358,7 @@
                             Excluir
                         </button>    
                     </div>
-                    <small class="stock-info">
+                    <small class="stock-info d-none">
                         <i class="fas fa-box-open" aria-hidden="true"></i>
                         {{ item.stock.quantity - cart.getProductQuantity(item) }} unidades disponíveis
                     </small>

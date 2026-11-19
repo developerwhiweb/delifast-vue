@@ -92,9 +92,9 @@
             </p>
 
             <div class="mt-2">
-              <h5 class="fw-bold">
+              <h4 class="fw-bold">
                 R$ {{ formatPrice(finalPrice) }}
-              </h5>
+              </h4>
 
               <div class="text-muted small" v-if="currentOldPrice">
                 <s>R$ {{ formatPrice(currentOldPrice) }}</s>
@@ -108,6 +108,34 @@
                 <i class="bi bi-tag"></i> Você economiza R$ {{ formatPrice(product.savings) }} neste combo!
               </div>
             </div>
+
+            <div class="row mt-3">
+              <small class="mb-1 fw-semibold">Quantidade</small>
+              <div class="d-flex align-items-center justify-content-center gap-3 mb-2">
+                  <button
+                    type="button"
+                    class="btn btn-md btn-outline-danger"
+                    aria-label="Diminuir quantidade"
+                    :disabled="productQuantity <= 1"
+                    @click="productQuantity--"
+                  >
+                    -
+                  </button>
+                  <span class="fw-bold" aria-live="polite">{{ productQuantity }}</span>
+                  <button
+                    type="button"
+                    class="btn btn-md btn-outline-success"
+                    aria-label="Aumentar quantidade"
+                    :disabled="!canIncreaseQuantity"
+                    @click="productQuantity++"
+                  >
+                    +
+                  </button>
+                </div>
+                <p class="small fw-medium text-muted mb-2" role="status">
+                  {{ stockAvailabilityMessage }}
+                </p>
+              </div>
           </div>
 
           <!-- RIGHT -->
@@ -503,6 +531,7 @@
   const selectedSize = ref(null)
   const selectedFlavors = ref([])
   const aditionalState = ref({})
+  const productQuantity = ref(1)
   
   // Estados para combos
   const comboAddonsState = ref({})
@@ -683,8 +712,37 @@
   const canAddMoreStock = computed(() => {
     if (!props.product) return false
     return isEditing.value
-      ? cart.canUpdateItem(props.product.cartItemId, props.product)
-      : cart.canAdd(props.product)
+      ? cart.canUpdateItem(props.product.cartItemId, {
+          ...props.product,
+          quantity: productQuantity.value,
+        })
+      : cart.canAdd(props.product, productQuantity.value)
+  })
+
+  const stockAvailabilityMessage = computed(() => {
+    const stock = cart.getProductStock(props.product)
+    if (stock?.available === false) return 'Produto esgotado.'
+    if (!stock?.control) return 'Estoque disponível.'
+
+    const quantityInCart = cart.getProductQuantity(
+      props.product,
+      isEditing.value ? props.product?.cartItemId : null,
+    )
+    const availableQuantity = Math.max(0, Number(stock.quantity) - quantityInCart)
+    const unitLabel = availableQuantity === 1 ? 'unidade' : 'unidades'
+    return `Disponíveis em estoque: ${availableQuantity} ${unitLabel}.`
+  })
+
+  const canIncreaseQuantity = computed(() => {
+    const stock = cart.getProductStock(props.product)
+    if (stock?.available === false) return false
+    if (!stock?.control) return true
+
+    const quantityInCart = cart.getProductQuantity(
+      props.product,
+      isEditing.value ? props.product?.cartItemId : null,
+    )
+    return quantityInCart + productQuantity.value < Number(stock.quantity)
   })
 
   const stockLimitMessage = computed(() => {
@@ -1345,14 +1403,14 @@ async function addToCart() {
         ...comboItem,
         id: props.product.cartItemId, // Mantém o ID original do carrinho
         cartItemId: props.product.cartItemId,
-        quantity: 1
+        quantity: productQuantity.value
       }
       
       console.log('Atualizando item com ID:', props.product.cartItemId)
       cart.updateItem(updatedItem)
     } else {
       // MODO ADIÇÃO - Adiciona novo item (o cartStore gera o ID)
-      cart.add(comboItem)
+      cart.add({ ...comboItem, quantity: productQuantity.value })
     }
   } else {
     const productToAdd = prepareNormalProductForCart()
@@ -1364,11 +1422,11 @@ async function addToCart() {
         ...productToAdd,
         id: props.product.cartItemId, // Mantém o ID original do carrinho
         cartItemId: props.product.cartItemId,
-        quantity: 1
+        quantity: productQuantity.value
       }
       cart.updateItem(updatedItem)
     } else {
-      cart.add(productToAdd)
+      cart.add({ ...productToAdd, quantity: productQuantity.value })
     }
   }
 
@@ -1476,6 +1534,7 @@ watch(
 )
   // Reset completo do estado
   const resetState = () => {
+    productQuantity.value = 1
     selectedOption.value = null
     selectedOptions.value = {}
     selectedSize.value = null
@@ -1497,6 +1556,9 @@ watch(
       if (newShow && props.product) {
         // Reset antes de inicializar
         resetState()
+        productQuantity.value = isEditing.value
+          ? Math.max(1, Number(props.product.quantity) || 1)
+          : 1
         await nextTick()
         
         if (props.product.isCombo) {

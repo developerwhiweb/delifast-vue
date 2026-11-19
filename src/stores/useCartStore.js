@@ -155,14 +155,17 @@ export const useCartStore = defineStore('cart', {
       }, 0)
     },
 
-    canAdd(product) {
+    canAdd(product, quantity = 1) {
+      const requestedQuantity = Number(quantity)
+      if (!Number.isSafeInteger(requestedQuantity) || requestedQuantity <= 0) return false
+
       const stock = this.getProductStock(product)
       if (stock?.available === false) return false
 
       const stockLimit = getStockLimit(stock)
       if (stockLimit === null) return true
 
-      return this.getProductQuantity(product) < stockLimit
+      return this.getProductQuantity(product) + requestedQuantity <= stockLimit
     },
 
     canIncrease(itemId) {
@@ -182,10 +185,13 @@ export const useCartStore = defineStore('cart', {
       const stock = this.getProductStock(product)
       if (stock?.available === false) return false
 
+      const requestedQuantity = Number(updatedProduct?.quantity ?? item.quantity)
+      if (!Number.isSafeInteger(requestedQuantity) || requestedQuantity <= 0) return false
+
       const stockLimit = getStockLimit(stock)
       if (stockLimit === null) return true
 
-      return this.getProductQuantity(product, itemId) + (Number(item.quantity) || 0) <= stockLimit
+      return this.getProductQuantity(product, itemId) + requestedQuantity <= stockLimit
     },
 
     // ⭐ FUNÇÃO PARA GERAR ID ÚNICO
@@ -196,8 +202,9 @@ export const useCartStore = defineStore('cart', {
     add(product) {
       const toast = useToast()
       const stock = this.getProductStock(product)
+      const requestedQuantity = Number(product.quantity ?? 1)
 
-      if (!this.canAdd(product)) {
+      if (!this.canAdd(product, requestedQuantity)) {
         toast.warning(`Estoque disponível de "${product.name}" atingido.`)
         return false
       }
@@ -249,7 +256,7 @@ export const useCartStore = defineStore('cart', {
 
       if (existingIndex !== -1) {
         // Item idêntico encontrado - apenas aumenta quantidade
-        this.items[existingIndex].quantity++
+        this.items[existingIndex].quantity += requestedQuantity
         this.items[existingIndex].stock = stock ?? this.items[existingIndex].stock
         
         // ⭐ PRESERVAR FLAG DE REORDER SE EXISTIR
@@ -259,7 +266,7 @@ export const useCartStore = defineStore('cart', {
           this.items[existingIndex].originalOrderId = product.originalOrderId
         }
         
-        toast.info(`Mais 1 unidade de "${product.name}" adicionada!`, { timeout: 3000 })
+        toast.info(`Mais ${requestedQuantity} unidade(s) de "${product.name}" adicionada(s)!`, { timeout: 3000 })
         return
       }
 
@@ -283,7 +290,7 @@ export const useCartStore = defineStore('cart', {
           oldPrice: product.oldPrice,
           image: product.image,
           cashback: product.cashback || 0,
-          quantity: 1,
+          quantity: requestedQuantity,
           isCombo: true,
           comboItems: product.comboItems || [],
           comboAddons: product.comboAddons || [],
@@ -322,7 +329,7 @@ export const useCartStore = defineStore('cart', {
         oldPrice: product.oldPrice,
         image: product.image,
         cashback: product.cashback || 0,
-        quantity: 1,
+        quantity: requestedQuantity,
         basePrice: product.basePrice ?? product.price ?? 0,
         options: product.options || [],
         selectedOption: product.selectedOption ?? null,
@@ -399,7 +406,7 @@ export const useCartStore = defineStore('cart', {
         return
       }
 
-      const originalQuantity = originalItem.quantity
+      const originalQuantity = Number(product.quantity ?? originalItem.quantity)
       
       // Remove o original
       this.items.splice(originalIndex, 1)
