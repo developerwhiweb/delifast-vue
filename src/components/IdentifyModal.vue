@@ -18,8 +18,7 @@
 
         <div class="modal-body">
           <div v-if="userStore.isLogged" class="text-center">
-            <p class="mb-1">{{ userStore.fullName }}</p>
-            <small class="d-block text-muted mb-3">{{ userStore.whatsapp }}</small>
+            <p class="mb-3">Você está identificado para fazer seus pedidos.</p>
             <button class="btn btn-outline-danger w-100" :disabled="isLoggingOut" @click="logout">
               {{ isLoggingOut ? 'Saindo...' : 'Sair da conta' }}
             </button>
@@ -137,7 +136,10 @@ const login = async () => {
       id: client.id,
       fullName: client.name,
       whatsapp: client.phone,
-      email: client.email || '',
+      hasEmail: client.has_email,
+      emailVerified: client.email_verified,
+      addressStorageEnabled: client.address_storage_enabled,
+      canBindEmail: client.can_bind_email,
       pathImage: client.path_image || '',
     })
 
@@ -145,7 +147,10 @@ const login = async () => {
       id: client.id,
       fullName: client.name,
       whatsapp: client.phone,
-      email: client.email || '',
+      hasEmail: client.has_email,
+      emailVerified: client.email_verified,
+      addressStorageEnabled: client.address_storage_enabled,
+      canBindEmail: client.can_bind_email,
       pathImage: client.path_image || '',
     })
     isLoading.value = false

@@ -18,7 +18,18 @@
         </div>
 
         <div class="modal-body">
-          <div v-if="isLoading" class="text-center py-4">
+          <div v-if="!hasSensitiveAccess" class="alert alert-secondary text-center py-4 mb-0">
+            <i class="bi bi-eye-slash fs-2 d-block mb-2"></i>
+            <strong>Seus dados estão protegidos</strong>
+            <p class="small text-muted mt-2 mb-3">
+              Confirme sua identidade pelo e-mail para visualizar ou alterar informações do perfil.
+            </p>
+            <button type="button" class="btn btn-outline-primary" @click="openSensitiveVerification">
+              <i class="bi bi-eye me-1"></i>Solicitar visualização
+            </button>
+          </div>
+
+          <div v-else-if="isLoading" class="text-center py-4">
             <div class="spinner-border text-primary" role="status">
               <span class="visually-hidden">Carregando...</span>
             </div>
@@ -79,6 +90,13 @@
                               <span>E-mail</span>
                           </div>
                           <div class="info-value">{{ profile.email || 'Não informado' }}</div>
+                          <button
+                            type="button"
+                            class="btn btn-link btn-sm p-0 mt-2"
+                            @click="openEmailChange"
+                          >
+                            {{ profile.email ? 'Alterar e-mail' : 'Adicionar e-mail' }}
+                          </button>
                       </div>
                   </div>
               </div>
@@ -177,17 +195,6 @@
                   <div class="invalid-feedback" v-if="errors.phone">{{ errors.phone }}</div>
                 </div>
 
-                <div class="col-12">
-                  <label class="form-label">E-mail <small>(opcional)</small></label>
-                  <input
-                    v-model="form.email"
-                    class="form-control"
-                    type="email"
-                    placeholder="seu@email.com"
-                    :class="{ 'is-invalid': errors.email }"
-                  >
-                  <div class="invalid-feedback" v-if="errors.email">{{ errors.email }}</div>
-                </div>
               </div>
 
               <div class="d-flex justify-content-end align-items-center mt-4">
@@ -201,6 +208,12 @@
             </div>
           </template>
         </div>
+        <ClientVerificationPrompt
+          v-model="showVerificationPrompt"
+          :purpose="verificationPurpose"
+          @needs-email="verificationPurpose = 'email'"
+          @verified="handleVerification"
+        />
       </div>
     </div>
   </div>
@@ -210,10 +223,19 @@
 import { computed, onBeforeUnmount, ref, watch, nextTick } from 'vue'
 import { useToast } from 'vue-toastification'
 import { useUserStore } from '@/stores/useUserStore'
-import { clearClientToken, clientApi, getClientToken, resolveApiAssetUrl } from '@/services/api'
+import {
+  clearClientToken,
+  clientApi,
+  getClientToken,
+  hasClientSensitiveAccess,
+  resolveApiAssetUrl,
+} from '@/services/api'
+import ClientVerificationPrompt from './ClientVerificationPrompt.vue'
+import { useClientSensitiveAccess } from '@/composables/useClientSensitiveAccess'
 
 const toast = useToast()
 const userStore = useUserStore()
+const { isAuthorized: hasSensitiveAccess, refresh: refreshSensitiveAccess } = useClientSensitiveAccess()
 
 const props = defineProps({
   modelValue: Boolean
@@ -222,6 +244,8 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'profile-updated', 'account-deleted'])
 
 const isAuthenticated = computed(() => userStore.isLogged && Boolean(getClientToken()))
+const showVerificationPrompt = ref(false)
+const verificationPurpose = ref('sensitive')
 const view = ref('view')
 const avatarInput = ref(null)
 const errors = ref({})
@@ -245,13 +269,20 @@ const setProfile = (client) => {
     name: client.name || '',
     phone: client.phone || '',
     email: client.email || '',
+    email_verified: Boolean(client.email_verified),
+    has_email: Boolean(client.has_email ?? client.email),
+    address_storage_enabled: Boolean(client.address_storage_enabled),
+    can_bind_email: Boolean(client.can_bind_email),
     path_image: client.path_image || null,
   }
   userStore.updateUser({
     id: client.id,
     fullName: profile.value.name,
     whatsapp: profile.value.phone,
-    email: profile.value.email,
+    hasEmail: profile.value.has_email,
+    emailVerified: profile.value.email_verified,
+    addressStorageEnabled: profile.value.address_storage_enabled,
+    canBindEmail: profile.value.can_bind_email,
     pathImage: profile.value.path_image,
   })
 }
@@ -322,9 +353,6 @@ const validateForm = () => {
     errors.value.phone = 'Telefone deve ter 11 dígitos (DDD + número).'
   }
 
-  if (form.value.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email)) {
-    errors.value.email = 'E-mail inválido.'
-  }
   return Object.keys(errors.value).length === 0
 }
 
@@ -365,7 +393,6 @@ const saveProfile = async () => {
   const payload = new FormData()
   payload.append('name', form.value.name.trim())
   payload.append('phone', form.value.phone.replace(/\D/g, ''))
-  payload.append('email', form.value.email.trim())
   if (selectedImage.value) payload.append('path_image', selectedImage.value)
   if (deleteImage.value) payload.append('delete_path_image', '1')
 
@@ -428,10 +455,39 @@ const close = () => {
   errors.value = {}
 }
 
+const openSensitiveVerification = () => {
+  verificationPurpose.value = 'sensitive'
+  showVerificationPrompt.value = true
+}
+
+const openEmailChange = () => {
+  verificationPurpose.value = userStore.emailVerified ? 'email-change' : 'email'
+  showVerificationPrompt.value = true
+}
+
+const handleVerification = async () => {
+  refreshSensitiveAccess()
+  if (verificationPurpose.value === 'sensitive') {
+    await loadProfile()
+    return
+  }
+
+  verificationPurpose.value = 'sensitive'
+  toast.success('E-mail confirmado com sucesso.')
+}
+
+watch(hasSensitiveAccess, (authorized) => {
+  if (authorized || !profile.value.id) return
+  profile.value = { id: null, name: '', phone: '', email: '', path_image: null }
+  form.value = { ...profile.value }
+  view.value = 'view'
+})
+
 watch(() => props.modelValue, async (newValue) => {
   if (!newValue) return
 
   userStore.loadUserFromStorage()
+  refreshSensitiveAccess()
   view.value = 'view'
   errors.value = {}
   showDeleteConfirmation.value = false
@@ -441,18 +497,20 @@ watch(() => props.modelValue, async (newValue) => {
     return
   }
 
-  isLoading.value = true
-  try {
-    await loadProfile()
-  } catch (error) {
-    if (error.response?.status === 401) {
-      await handleUnauthorized()
-    } else {
-      toast.error(getErrorMessage(error), { timeout: 4000 })
-      emit('update:modelValue', false)
+  if (hasClientSensitiveAccess()) {
+    isLoading.value = true
+    try {
+      await loadProfile()
+    } catch (error) {
+      if (error.response?.status === 401) {
+        await handleUnauthorized()
+      } else {
+        toast.error(getErrorMessage(error), { timeout: 4000 })
+        emit('update:modelValue', false)
+      }
+    } finally {
+      isLoading.value = false
     }
-  } finally {
-    isLoading.value = false
   }
 }, { immediate: true })
 

@@ -10,8 +10,17 @@
       </div>
 
       <div class="modal-body">
+        <div v-if="!hasSensitiveAccess" class="empty-state protected-state">
+          <i class="bi bi-eye-slash fs-2"></i>
+          <strong>Seus pedidos estão protegidos</strong>
+          <p>Confirme sua identidade pelo e-mail para visualizar o histórico e os endereços de entrega.</p>
+          <button type="button" class="btn btn-outline-primary" @click="openSensitiveVerification">
+            <i class="bi bi-eye me-1"></i>Solicitar visualização
+          </button>
+        </div>
+
         <!-- Loading state -->
-        <div v-if="loading" class="loading-state">
+        <div v-else-if="loading" class="loading-state">
           <div class="spinner"></div>
           <p>Carregando seus pedidos...</p>
         </div>
@@ -136,13 +145,22 @@
         <button class="btn-close-modal" @click="closeModal">Fechar</button>
       </div>
     </div>
+    <ClientVerificationPrompt
+      v-model="showVerificationPrompt"
+      :purpose="verificationPurpose"
+      @needs-email="verificationPurpose = 'email'"
+      @verified="handleVerification"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
 import { useToast } from 'vue-toastification'
-import { getOrder, getOrders } from '@/services/api'
+import { getOrder, getOrders, hasClientSensitiveAccess } from '@/services/api'
+import ClientVerificationPrompt from './ClientVerificationPrompt.vue'
+import { useClientSensitiveAccess } from '@/composables/useClientSensitiveAccess'
+import { useUserStore } from '@/stores/useUserStore'
 
 const props = defineProps({
   modelValue: {
@@ -158,11 +176,15 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'reorder'])
 
 const toast = useToast()
+const userStore = useUserStore()
+const { isAuthorized: hasSensitiveAccess, refresh: refreshSensitiveAccess } = useClientSensitiveAccess()
 const loading = ref(false)
 const loadError = ref('')
 const orders = ref([])
 const expandedOrder = ref(null)
 const loadingOrderId = ref(null)
+const showVerificationPrompt = ref(false)
+const verificationPurpose = ref('sensitive')
 
 //Em produção, substituir essa porta fixa por uma variável de ambiente.
 const getProductImageUrl = (path) => {
@@ -351,6 +373,11 @@ const hasCustomizations = (order) => (
 )
 
 const fetchOrders = async () => {
+  if (!hasClientSensitiveAccess()) {
+    orders.value = []
+    return
+  }
+
   if (!props.userId) {
     orders.value = []
     return
@@ -370,15 +397,38 @@ const fetchOrders = async () => {
   }
 }
 
-watch([() => props.modelValue, () => props.userId], ([isOpen]) => {
-  if (isOpen) {
+const openSensitiveVerification = () => {
+  verificationPurpose.value = 'sensitive'
+  showVerificationPrompt.value = true
+}
+
+const handleVerification = async (data) => {
+  refreshSensitiveAccess()
+  if (verificationPurpose.value === 'sensitive') {
     fetchOrders()
+  }
+  if (verificationPurpose.value === 'email' && data) userStore.updateUser(data)
+  verificationPurpose.value = 'sensitive'
+}
+
+watch(hasSensitiveAccess, (authorized) => {
+  if (authorized) return
+  orders.value = []
+  expandedOrder.value = null
+})
+
+watch([() => props.modelValue, () => props.userId, hasSensitiveAccess], ([isOpen, , authorized]) => {
+  if (isOpen && authorized) {
+    fetchOrders()
+  } else if (isOpen) {
+    orders.value = []
   }
 }, { immediate: true })
 
 const closeModal = () => {
   emit('update:modelValue', false)
   expandedOrder.value = null
+  showVerificationPrompt.value = false
 }
 
 const toggleOrderDetails = async (orderId) => {

@@ -1,9 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 
 const orderApi = vi.hoisted(() => ({
   getOrder: vi.fn(),
   getOrders: vi.fn(),
+  hasClientSensitiveAccess: vi.fn(),
+  getClientSensitiveAccessExpiresAt: vi.fn(),
+  clientApi: {
+    requestEmailVerification: vi.fn(),
+    confirmEmailVerification: vi.fn(),
+    requestSensitiveAccess: vi.fn(),
+    confirmSensitiveAccess: vi.fn(),
+  },
 }))
 
 vi.mock('@/services/api', () => orderApi)
@@ -18,6 +27,9 @@ import OrderHistoryModal from '@/components/OrderHistoryModal.vue'
 describe('OrderHistoryModal customizations', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    setActivePinia(createPinia())
+    orderApi.hasClientSensitiveAccess.mockReturnValue(true)
+    orderApi.getClientSensitiveAccessExpiresAt.mockReturnValue(0)
     orderApi.getOrders.mockResolvedValue([
       { id: 21, status: 'pending', total: 80, items: [] },
     ])
@@ -116,5 +128,18 @@ describe('OrderHistoryModal customizations', () => {
     expect(wrapper.find('.order-summary').text()).toContain('Cupom aplicado: BEMVINDO')
     expect(wrapper.find('.order-summary').text()).toContain('Desconto do cupom:')
     expect(wrapper.find('.order-summary').text()).toContain('5,00')
+  })
+
+  it('keeps order history hidden until sensitive access is granted', async () => {
+    orderApi.hasClientSensitiveAccess.mockReturnValue(false)
+
+    const wrapper = mount(OrderHistoryModal, {
+      props: { modelValue: true, userId: 7 },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('.protected-state').text()).toContain('Seus pedidos estão protegidos')
+    expect(orderApi.getOrders).not.toHaveBeenCalled()
+    wrapper.unmount()
   })
 })

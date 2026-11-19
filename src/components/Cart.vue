@@ -30,7 +30,7 @@
                     </div>
                     <div class="text-start">
                         <strong v-if="userStore.isLogged">
-                            Olá, <span class="name-user">{{ userStore.fullName }}!</span>
+                            Olá, <span class="name-user">{{ hasSensitiveAccess ? userStore.fullName : 'cliente' }}!</span>
                         </strong>
 
                         <strong v-else>
@@ -455,6 +455,7 @@
 
         <AddressModal
             v-model="showAddressModal"
+            :checkout-mode="true"
             @address-selected="handleAddressSelected"
         />
 
@@ -490,7 +491,8 @@
     import CashChangeModal from './CashChangeModal.vue'
     import { useCartStore } from '@/stores/useCartStore'
     import { useUserStore } from '@/stores/useUserStore'
-    import { createOrder, getAddresses, getContacts, validateCoupon } from '@/services/api'
+    import { createOrder, getContacts, hasClientSensitiveAccess, validateCoupon } from '@/services/api'
+    import { useClientSensitiveAccess } from '@/composables/useClientSensitiveAccess'
     import { createOrderWhatsAppUrl, formatOrderWhatsAppMessage } from '@/utils/orderWhatsApp'
     import { buildCouponValidationItem } from '@/utils/couponPayload'
     import { refreshProductStocks, validateCartStock } from '@/utils/productStock'
@@ -499,12 +501,16 @@
     const toast = useToast()
     const cart = useCartStore()
     const userStore = useUserStore()
+    const { isAuthorized: hasSensitiveAccess } = useClientSensitiveAccess()
     const showModal = ref(false)
     const showAddressModal = ref(false)
     const showDeliveryMethodModal = ref(false)
     const showPaymentMethodModal = ref(false)
     const showCashChangeModal = ref(false)
     const selectedAddress = ref(null)
+    const selectedAddressId = ref(null)
+    const selectedAddressSaveToAccount = ref(false)
+    const orderEmail = ref('')
     const selectedDeliveryMethod = ref(null)
     const selectedPaymentMethod = ref('')
     const cashChange = ref(null)
@@ -516,6 +522,27 @@
     const isValidatingCoupon = ref(false)
     const couponItems = computed(() => cart.items.map(buildCouponValidationItem))
     const couponItemsSignature = computed(() => JSON.stringify(couponItems.value))
+    const handleSensitiveAccessChange = () => {
+        if (hasClientSensitiveAccess() || !selectedAddressId.value) return
+        selectedAddress.value = null
+        selectedAddressId.value = null
+        localStorage.removeItem('selectedAddressId')
+    }
+
+    const normalizeDeliveryAddress = (address) => ({
+        title: address.title || address.nickname || 'Casa',
+        recipient_name: address.recipient_name || address.recipientName || userStore.fullName,
+        zip_code: address.zip_code || address.cep || '',
+        state: address.state || '',
+        city: address.city || '',
+        neighborhood: address.neighborhood || '',
+        street: address.street || '',
+        number: address.number || '',
+        complement: address.complement || null,
+        reference: address.reference || null,
+        is_default: Boolean(address.is_default || address.primary),
+    })
+
     const couponDiscount = computed(() => {
         if (!appliedCoupon.value || appliedCoupon.value.itemsSignature !== couponItemsSignature.value) {
             return 0
@@ -649,39 +676,18 @@
         })
     }
 
-    // Carrega do banco o endereço referenciado no armazenamento local.
+    // Saved addresses are fetched only after an explicit identity verification in AddressModal.
     const updateSelectedAddress = async () => {
         localStorage.removeItem('addresses')
         localStorage.removeItem('selectedAddress')
 
         if (!userStore.isLogged) {
             selectedAddress.value = null
+            selectedAddressId.value = null
             return null
         }
 
-        try {
-            const addresses = await getAddresses()
-            const savedSelectedId = localStorage.getItem('selectedAddressId')
-            const selected = addresses.find(
-                (address) => String(address.id) === String(savedSelectedId),
-            )
-            const address = selected || addresses.find((item) => item.primary) || null
-
-            selectedAddress.value = address
-
-            if (address) {
-                localStorage.setItem('selectedAddressId', String(address.id))
-            } else {
-                localStorage.removeItem('selectedAddressId')
-            }
-
-            return address
-        } catch (error) {
-            console.error('Não foi possível carregar os endereços da API.', error)
-            selectedAddress.value = null
-            toast.error(error.response?.data?.message || 'Não foi possível carregar os endereços.')
-            return null
-        }
+        return selectedAddress.value
     }
 
     // Carregar método de entrega salvo
@@ -758,7 +764,11 @@
             throw new Error('Não foi possível identificar os produtos do carrinho para validar o cupom.')
         }
 
-        return items.map(({ hasUnmappedOption, ...item }) => item)
+        return items.map((item) => {
+            const couponItem = { ...item }
+            delete couponItem.hasUnmappedOption
+            return couponItem
+        })
     }
 
     const removeCoupon = () => {
@@ -854,12 +864,25 @@
     }
 
     const handleAddressSelected = (address) => {
-        if (address) {
-            selectedAddress.value = address
-            localStorage.setItem('selectedAddressId', String(address.id))
+        if (address?.address) {
+            selectedAddress.value = address.address
+            selectedAddressId.value = address.addressId || null
+            selectedAddressSaveToAccount.value = Boolean(address.saveToAccount)
+            orderEmail.value = address.customerEmail || ''
+            if (selectedAddressId.value) {
+                localStorage.setItem('selectedAddressId', String(selectedAddressId.value))
+            } else {
+                localStorage.removeItem('selectedAddressId')
+            }
             localStorage.removeItem('selectedAddress')
+        } else if (address) {
+            selectedAddress.value = address
+            selectedAddressId.value = address.id || null
+            selectedAddressSaveToAccount.value = Boolean(address.id)
+            orderEmail.value = ''
         } else {
             selectedAddress.value = null
+            selectedAddressId.value = null
             localStorage.removeItem('selectedAddressId')
             localStorage.removeItem('selectedAddress')
         }
@@ -1020,8 +1043,14 @@
             await updateSelectedAddress()
             loadSavedDeliveryMethod()
             loadSavedPaymentMethod()
+            if (selectedDeliveryMethod.value?.value === 'delivery') {
+                setTimeout(openAddressModal, 300)
+            }
         } else {
             selectedAddress.value = null
+            selectedAddressId.value = null
+            selectedAddressSaveToAccount.value = false
+            orderEmail.value = ''
             selectedDeliveryMethod.value = null
             selectedPaymentMethod.value = ''
             cashChange.value = null
@@ -1066,17 +1095,25 @@
         }
         
         userStore.loadUserFromStorage()
+        selectedAddress.value = null
+        selectedAddressId.value = null
+        localStorage.removeItem('selectedAddressId')
         updateSelectedAddress()
         loadSavedDeliveryMethod()
         loadSavedPaymentMethod()
+        if (selectedDeliveryMethod.value?.value === 'delivery' && userStore.isLogged) {
+            openAddressModal()
+        }
         
         window.addEventListener('storage', handleStorageChange)
         window.addEventListener('addresses-updated', handleCustomAddressUpdate)
+        window.addEventListener('client-sensitive-access-changed', handleSensitiveAccessChange)
     })
 
     onUnmounted(() => {
         window.removeEventListener('storage', handleStorageChange)
         window.removeEventListener('addresses-updated', handleCustomAddressUpdate)
+        window.removeEventListener('client-sensitive-access-changed', handleSensitiveAccessChange)
     })
 
     const handleConfirm = async () => {
@@ -1148,10 +1185,18 @@
             payment_method: selectedPaymentMethod.value,
             cash_change: selectedPaymentMethod.value === 'cash' ? cashChange.value : null,
             address_id: selectedDeliveryMethod.value.value === 'delivery'
-                ? selectedAddress.value.id
+                && selectedAddressSaveToAccount.value
+                ? selectedAddressId.value
                 : null,
             delivery_address: selectedDeliveryMethod.value.value === 'delivery'
-                ? selectedAddress.value
+                ? normalizeDeliveryAddress(selectedAddress.value)
+                : null,
+            delivery_method: selectedDeliveryMethod.value.value,
+            save_address: selectedDeliveryMethod.value.value === 'delivery'
+                ? selectedAddressSaveToAccount.value
+                : false,
+            customer_email: selectedDeliveryMethod.value.value === 'delivery'
+                ? orderEmail.value || null
                 : null,
             subtotal: cart.subTotal,
             discount: orderDiscount.value,
@@ -1193,6 +1238,14 @@
 
             const response = await createOrder(orderData)
             const savedOrder = response.data?.data
+            if (selectedDeliveryMethod.value.value === 'delivery') {
+                userStore.updateUser({
+                    addressStorageEnabled: selectedAddressSaveToAccount.value,
+                })
+            }
+            selectedAddress.value = null
+            selectedAddressId.value = null
+            localStorage.removeItem('selectedAddressId')
             removeCoupon()
             cart.clear({ silent: true })
             cashChange.value = null

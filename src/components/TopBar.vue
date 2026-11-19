@@ -234,7 +234,7 @@
     <div v-if="userStore.isLogged" class="user-info-mobile p-3 d-flex justify-content-center align-items-center text-start mb-2">
       <div class="avatar-mobile me-2">
         <img
-          v-if="userAvatarUrl && !avatarImageFailed"
+          v-if="hasSensitiveAccess && userAvatarUrl && !avatarImageFailed"
           :src="userAvatarUrl"
           :alt="`Foto de perfil de ${userStore.fullName || 'Usuário'}`"
           class="avatar-mobile-image"
@@ -243,8 +243,8 @@
         <i v-else class="bi bi-person-circle" aria-hidden="true"></i>
       </div>
       <div class="user-details">
-        <h6 class="mb-0">{{ userStore.fullName || 'Usuário' }}</h6>
-        <small class="text-muted">{{ userStore.whatsapp || 'Telefone não informado' }}</small>
+        <h6 class="mb-0">{{ hasSensitiveAccess ? userStore.fullName : 'Dados protegidos' }}</h6>
+        <small class="text-muted">{{ hasSensitiveAccess ? userStore.whatsapp : 'Confirme sua identidade para visualizar' }}</small>
       </div>
     </div>
 
@@ -453,10 +453,12 @@
   import { getTenantConfig, resolveApiAssetUrl } from '@/services/api'
   import { getStoreSchedule } from '@/utils/storeHours'
   import { groupOpeningHours, isStoreOpenAt } from '@/utils/openingHours'
+  import { useClientSensitiveAccess } from '@/composables/useClientSensitiveAccess'
 
   const toast = useToast()
   const cartStore = useCartStore()
   const userStore = useUserStore()
+  const { isAuthorized: hasSensitiveAccess } = useClientSensitiveAccess()
   const showTabletSearch = ref(false)
   const showOpeningHoursModal = ref(false)
   const props = defineProps({
@@ -611,6 +613,7 @@
     return userStore.isLogged && userStore.userId
   })
   const userAvatarUrl = computed(() => {
+    if (!hasSensitiveAccess.value) return ''
     const path = typeof userStore.pathImage === 'string' ? userStore.pathImage.trim() : ''
     if (!path) return ''
 
@@ -883,14 +886,13 @@
   })
 
   const logout = () => {
-    const userName = userStore.fullName || 'Usuário'
     userStore.logout()
     
     if (showOrderHistoryModal.value) {
       showOrderHistoryModal.value = false
     }
     
-    toast.info(`Até mais, ${userName}! Você saiu da sua conta.`, { timeout: 4000 })
+    toast.info('Você saiu da sua conta.', { timeout: 4000 })
   }
 </script>
 

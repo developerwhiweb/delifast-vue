@@ -7,8 +7,11 @@ export const useUserStore = defineStore('user', {
     id: null,           // ID único do usuário
     fullName: '',       // Nome completo
     whatsapp: '',       // WhatsApp para contato
-    email: '',          // Email (opcional, para futuro)
     pathImage: '',
+    hasEmail: false,
+    emailVerified: false,
+    addressStorageEnabled: false,
+    canBindEmail: false,
     isLogged: false     // Status de login
   }),
 
@@ -21,8 +24,10 @@ export const useUserStore = defineStore('user', {
       id: state.id,
       fullName: state.fullName,
       whatsapp: state.whatsapp,
-      email: state.email,
-      pathImage: state.pathImage
+      pathImage: state.pathImage,
+      hasEmail: state.hasEmail,
+      emailVerified: state.emailVerified,
+      addressStorageEnabled: state.addressStorageEnabled,
     }),
     
     // Nome de exibição (primeiro nome)
@@ -39,18 +44,18 @@ export const useUserStore = defineStore('user', {
       this.id = userData.id || Date.now()
       this.fullName = userData.fullName || ''
       this.whatsapp = userData.whatsapp || ''
-      this.email = userData.email || ''
       this.pathImage = userData.pathImage || userData.path_image || ''
+      this.hasEmail = Boolean(userData.hasEmail ?? userData.has_email)
+      this.emailVerified = Boolean(userData.emailVerified ?? userData.email_verified)
+      this.addressStorageEnabled = Boolean(
+        userData.addressStorageEnabled ?? userData.address_storage_enabled,
+      )
+      this.canBindEmail = Boolean(userData.canBindEmail ?? userData.can_bind_email)
       this.isLogged = true
       
       // Salvar no localStorage para persistência
       this.saveToStorage()
       
-      console.log('✅ Usuário logado:', {
-        id: this.id,
-        fullName: this.fullName,
-        whatsapp: this.whatsapp
-      })
     },
 
     // Atualizar dados do usuário
@@ -58,12 +63,34 @@ export const useUserStore = defineStore('user', {
       if (Object.prototype.hasOwnProperty.call(userData, 'id')) this.id = userData.id
       if (Object.prototype.hasOwnProperty.call(userData, 'fullName')) this.fullName = userData.fullName || ''
       if (Object.prototype.hasOwnProperty.call(userData, 'whatsapp')) this.whatsapp = userData.whatsapp || ''
-      if (Object.prototype.hasOwnProperty.call(userData, 'email')) this.email = userData.email || ''
       if (Object.prototype.hasOwnProperty.call(userData, 'pathImage')) this.pathImage = userData.pathImage || ''
       if (Object.prototype.hasOwnProperty.call(userData, 'path_image')) this.pathImage = userData.path_image || ''
+      if (Object.prototype.hasOwnProperty.call(userData, 'hasEmail')) {
+        this.hasEmail = Boolean(userData.hasEmail)
+      }
+      if (Object.prototype.hasOwnProperty.call(userData, 'has_email')) {
+        this.hasEmail = Boolean(userData.has_email)
+      }
+      if (Object.prototype.hasOwnProperty.call(userData, 'emailVerified')) {
+        this.emailVerified = Boolean(userData.emailVerified)
+      }
+      if (Object.prototype.hasOwnProperty.call(userData, 'email_verified')) {
+        this.emailVerified = Boolean(userData.email_verified)
+      }
+      if (Object.prototype.hasOwnProperty.call(userData, 'addressStorageEnabled')) {
+        this.addressStorageEnabled = Boolean(userData.addressStorageEnabled)
+      }
+      if (Object.prototype.hasOwnProperty.call(userData, 'address_storage_enabled')) {
+        this.addressStorageEnabled = Boolean(userData.address_storage_enabled)
+      }
+      if (Object.prototype.hasOwnProperty.call(userData, 'canBindEmail')) {
+        this.canBindEmail = Boolean(userData.canBindEmail)
+      }
+      if (Object.prototype.hasOwnProperty.call(userData, 'can_bind_email')) {
+        this.canBindEmail = Boolean(userData.can_bind_email)
+      }
       
       this.saveToStorage()
-      console.log('📝 Dados do usuário atualizados:', userData)
     },
 
     // Logout
@@ -78,14 +105,16 @@ export const useUserStore = defineStore('user', {
       this.id = null
       this.fullName = ''
       this.whatsapp = ''
-      this.email = ''
       this.pathImage = ''
+      this.hasEmail = false
+      this.emailVerified = false
+      this.addressStorageEnabled = false
+      this.canBindEmail = false
       this.isLogged = false
       clearClientToken()
       
       // Remover do localStorage
       localStorage.removeItem('userData')
-      console.log('👋 Usuário deslogado')
       return logoutRequest
     },
 
@@ -95,8 +124,11 @@ export const useUserStore = defineStore('user', {
         id: this.id,
         fullName: this.fullName,
         whatsapp: this.whatsapp,
-        email: this.email,
-        pathImage: this.pathImage
+        pathImage: this.pathImage,
+        hasEmail: this.hasEmail,
+        emailVerified: this.emailVerified,
+        addressStorageEnabled: this.addressStorageEnabled,
+        canBindEmail: this.canBindEmail,
       }))
     },
 
@@ -114,13 +146,15 @@ export const useUserStore = defineStore('user', {
           this.id = data.id
           this.fullName = data.fullName || ''
           this.whatsapp = data.whatsapp || ''
-          this.email = data.email || ''
           this.pathImage = data.pathImage || data.path_image || ''
+          this.hasEmail = Boolean(data.hasEmail ?? data.has_email)
+          this.emailVerified = Boolean(data.emailVerified ?? data.email_verified)
+          this.addressStorageEnabled = Boolean(
+            data.addressStorageEnabled ?? data.address_storage_enabled,
+          )
+          this.canBindEmail = Boolean(data.canBindEmail ?? data.can_bind_email)
           this.isLogged = true
-          console.log('📦 Usuário carregado do storage:', {
-            id: this.id,
-            fullName: this.fullName
-          })
+          this.saveToStorage()
         } catch (error) {
           console.error('Erro ao carregar usuário:', error)
           this.logout()
@@ -139,7 +173,6 @@ export const useUserStore = defineStore('user', {
         // this.updateUser(userData)
         // return userData
         
-        console.log('🔄 Sincronização com backend - implementar quando API estiver pronta')
         return null
       } catch (error) {
         console.error('Erro ao sincronizar com backend:', error)
@@ -152,6 +185,16 @@ export const useUserStore = defineStore('user', {
   persist: {
     key: 'user',
     storage: localStorage,
-    paths: ['id', 'fullName', 'whatsapp', 'email', 'pathImage', 'isLogged']
+    paths: [
+      'id',
+      'fullName',
+      'whatsapp',
+      'pathImage',
+      'hasEmail',
+      'emailVerified',
+      'addressStorageEnabled',
+      'canBindEmail',
+      'isLogged',
+    ]
   }
 })

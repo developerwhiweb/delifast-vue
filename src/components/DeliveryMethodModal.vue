@@ -108,17 +108,11 @@
     </div>
   </div>
 
-  <AddressModal 
-    v-model="showAddressModal"
-    @address-selected="handleAddressSelected"
-  />
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
 import { useToast } from 'vue-toastification'
-import AddressModal from './AddressModal.vue'
-import { useUserStore } from '@/stores/useUserStore'
 
 const toast = useToast()
 const props = defineProps({
@@ -127,13 +121,8 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'method-selected'])
 
-const userStore = useUserStore()
-
-// Muda de deliveryMethod para selectedMethod para evitar conflito
 const selectedMethod = ref('')
 const isLoading = ref(false)
-const showAddressModal = ref(false)
-const pendingMethod = ref(null)
 
 const deliveryMethodsOptions = {
   delivery: { value: 'delivery', label: 'Entrega Delivery', timeEstimate: '30-45 min' },
@@ -156,42 +145,6 @@ const loadCurrentMethod = () => {
   }
 }
 
-const hasSelectedAddress = () => {
-  const savedAddressId = localStorage.getItem('selectedAddressId')
-  return Boolean(savedAddressId)
-}
-
-const handleAddressSelected = async (address) => {
-  showAddressModal.value = false
-  
-  if (address && pendingMethod.value === 'delivery') {
-    localStorage.setItem('selectedAddressId', String(address.id))
-    localStorage.removeItem('selectedAddress')
-    const methodData = deliveryMethodsOptions[pendingMethod.value]
-    emit('method-selected', methodData)
-    close()
-    toast.success(`Endereço selecionado: ${formatAddress(address)}`, { timeout: 3000 })
-  } else if (!address && pendingMethod.value === 'delivery') {
-    localStorage.removeItem('selectedAddressId')
-    localStorage.removeItem('selectedAddress')
-    toast.warning('Para entrega em domicílio, é necessário selecionar um endereço!', { timeout: 3000 })
-    loadCurrentMethod()
-  }
-  
-  pendingMethod.value = null
-  isLoading.value = false
-}
-
-const formatAddress = (address) => {
-  if (!address) return ''
-  const parts = []
-  if (address.street) parts.push(address.street)
-  if (address.number) parts.push(address.number)
-  if (address.neighborhood) parts.push(address.neighborhood)
-  if (address.city) parts.push(address.city)
-  return parts.join(', ')
-}
-
 const confirmSelection = async () => {
   if (!selectedMethod.value) {
     toast.warning('Selecione uma forma de entrega!', { timeout: 3000 })
@@ -199,33 +152,6 @@ const confirmSelection = async () => {
   }
 
   isLoading.value = true
-
-  if (selectedMethod.value === 'delivery') {
-    // 🔥 REMOVIDA a verificação de login aqui!
-    // O usuário pode selecionar delivery mesmo sem estar logado
-    // O cadastro será feito depois no IdentifyModal
-    
-    const hasAddress = hasSelectedAddress()
-    
-    if (!hasAddress) {
-      // Se não tem endereço, abre o modal de endereço APENAS se o usuário já estiver logado
-      // ou se estiver vindo de um fluxo onde o cadastro já foi iniciado
-      if (userStore.isLogged) {
-        pendingMethod.value = selectedMethod.value
-        showAddressModal.value = true
-        isLoading.value = false
-        return
-      } else {
-        // Se não está logado, apenas emite o método selecionado
-        // O IdentifyModal vai pedir cadastro depois
-        const methodData = deliveryMethodsOptions[selectedMethod.value]
-        emit('method-selected', methodData)
-        close()
-        isLoading.value = false
-        return
-      }
-    }
-  }
 
   const methodData = deliveryMethodsOptions[selectedMethod.value]
   emit('method-selected', methodData)
@@ -243,8 +169,6 @@ watch(() => props.modelValue, (open) => {
   if (open) {
     loadCurrentMethod()
     isLoading.value = false
-    pendingMethod.value = null
-    showAddressModal.value = false
   }
 })
 </script>

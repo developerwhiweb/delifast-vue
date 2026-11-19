@@ -18,6 +18,8 @@ const apiBaseUrl = (() => {
 
 const appearanceCacheKey = `delifast:appearance:${apiBaseUrl}/appearance`
 const clientTokenKey = 'clientToken'
+let clientSensitiveToken = null
+let clientSensitiveTokenExpiresAt = 0
 
 const normalizeAppearance = (response) => {
     const data = response?.data?.appearance || response?.data || response
@@ -59,7 +61,33 @@ export const clearClientToken = () => {
     if (typeof localStorage !== 'undefined') {
         localStorage.removeItem(clientTokenKey)
     }
+    clearClientSensitiveAccess()
 }
+
+export const setClientSensitiveAccess = (token, expiresAt) => {
+    clientSensitiveToken = token
+    clientSensitiveTokenExpiresAt = Date.parse(expiresAt) || 0
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('client-sensitive-access-changed'))
+    }
+}
+
+export const clearClientSensitiveAccess = () => {
+    const hadToken = Boolean(clientSensitiveToken)
+    clientSensitiveToken = null
+    clientSensitiveTokenExpiresAt = 0
+    if (hadToken && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('client-sensitive-access-changed'))
+    }
+}
+
+export const hasClientSensitiveAccess = () => {
+    if (clientSensitiveToken && clientSensitiveTokenExpiresAt > Date.now()) return true
+    clearClientSensitiveAccess()
+    return false
+}
+
+export const getClientSensitiveAccessExpiresAt = () => clientSensitiveTokenExpiresAt
 
 export const api = axios.create({
     baseURL: apiBaseUrl,
@@ -68,13 +96,30 @@ export const api = axios.create({
 api.interceptors.request.use((config) => {
     const token = getClientToken()
     if (token) config.headers.Authorization = `Bearer ${token}`
+    if (hasClientSensitiveAccess()) {
+        config.headers['X-Client-Verification'] = clientSensitiveToken
+    } else {
+        clearClientSensitiveAccess()
+    }
     return config
+})
+
+api.interceptors.response.use(undefined, (error) => {
+    if (
+        error.response?.status === 403
+        && error.response?.data?.code === 'client_verification_required'
+    ) {
+        clearClientSensitiveAccess()
+    }
+
+    return Promise.reject(error)
 })
 
 const clientEndpoint = '/client'
 
 export const clientApi = {
     login: async (credentials) => {
+        clearClientSensitiveAccess()
         const response = await api.post(`${clientEndpoint}/login`, credentials)
         const { token, client } = response.data?.data || {}
 
@@ -109,6 +154,32 @@ export const clientApi = {
             { headers: { Authorization: `Bearer ${token}` } },
         ).finally(clearClientToken)
     },
+    requestEmailVerification: (email) => api.post(
+        `${clientEndpoint}/email-verification/request`,
+        email ? { email } : {},
+    ),
+    confirmEmailVerification: async (code) => {
+        const response = await api.post(
+            `${clientEndpoint}/email-verification/confirm`,
+            { code },
+        )
+        clearClientSensitiveAccess()
+        return response
+    },
+    requestSensitiveAccess: () => api.post(`${clientEndpoint}/sensitive-access/request`),
+    confirmSensitiveAccess: async (code) => {
+        const response = await api.post(`${clientEndpoint}/sensitive-access/confirm`, { code })
+        const access = response.data?.data
+        if (!access?.token || !access?.expires_at) {
+            throw new Error('A resposta da verificação não contém uma autorização temporária.')
+        }
+        setClientSensitiveAccess(access.token, access.expires_at)
+        return response
+    },
+    updateAddressStorage: (enabled) => api.put(
+        `${clientEndpoint}/address-storage`,
+        { address_storage_enabled: enabled },
+    ),
 }
 
 export const getTenantConfig = async () => {

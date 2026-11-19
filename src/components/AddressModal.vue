@@ -19,8 +19,27 @@
 
         <div class="modal-body">
 
+          <div v-if="view === 'protected'" class="alert alert-secondary text-center py-4">
+            <i class="bi bi-eye-slash fs-2 d-block mb-2"></i>
+            <strong>Seus endereços estão protegidos</strong>
+            <p class="small text-muted mt-2 mb-3">
+              Confirme sua identidade pelo e-mail para visualizar os endereços salvos.
+            </p>
+            <button type="button" class="btn btn-outline-primary" @click="openSensitiveVerification">
+              <i class="bi bi-eye me-1"></i>Solicitar visualização
+            </button>
+            <button
+              v-if="props.checkoutMode"
+              type="button"
+              class="btn btn-primary ms-2"
+              @click="showForm"
+            >
+              Informar um endereço para este pedido
+            </button>
+          </div>
+
           <!-- LISTA -->
-          <div v-if="view === 'list'" class="mb-4">
+          <div v-else-if="view === 'list'" class="mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h6 class="address-title">Endereços cadastrados</h6>
                 <!-- No lugar do botão Novo Endereço existente -->
@@ -185,6 +204,37 @@
 
               <textarea v-model="form.reference" class="form-control"></textarea>
 
+              <div v-if="props.checkoutMode" class="mt-3">
+                <p class="form-label mb-2">Deseja salvar este endereço para utilizá-lo em próximas compras?</p>
+                <div class="d-flex flex-column gap-2">
+                  <label class="form-check">
+                    <input v-model="saveAddressPreference" class="form-check-input" type="radio" :value="true">
+                    <span class="form-check-label">Sim, desejo salvar</span>
+                  </label>
+                  <label class="form-check">
+                    <input v-model="saveAddressPreference" class="form-check-input" type="radio" :value="false">
+                    <span class="form-check-label">Não desejo salvar</span>
+                  </label>
+                </div>
+
+                <p v-if="saveAddressPreference && !userStore.emailVerified && !userStore.hasEmail && !userStore.canBindEmail" class="small text-warning mt-2 mb-0">
+                  Esta conta já possui dados associados e não pode cadastrar um novo e-mail sem verificação adicional. Você ainda pode continuar sem salvar o endereço.
+                </p>
+
+                <div v-if="!saveAddressPreference" class="mt-3">
+                  <label class="form-label" for="order-contact-email">E-mail para este pedido <small>(opcional)</small></label>
+                  <input
+                    id="order-contact-email"
+                    v-model.trim="customerEmail"
+                    type="email"
+                    class="form-control"
+                    autocomplete="email"
+                    maxlength="255"
+                  >
+                  <small class="text-muted">Este e-mail será usado somente neste pedido.</small>
+                </div>
+              </div>
+
               <div class="form-check mt-3">
                 <input type="checkbox" v-model="form.primary" class="form-check-input">
                 <label class="form-check-label">
@@ -194,7 +244,11 @@
 
               <div class="d-flex justify-content-between mt-4">
                 <button class="btn bg-light" @click="prevStep">Voltar</button>
-                <button class="btn bg-yellow fw-medium" @click="saveAddress" :disabled="isSaving">
+                <button
+                  class="btn bg-yellow fw-medium"
+                  @click="saveAddress"
+                  :disabled="isSaving"
+                >
                   {{ isSaving ? 'Salvando...' : 'Salvar Endereço' }}
                 </button>
               </div>
@@ -237,24 +291,43 @@
       </div>
     </div>
   </div>
+  <ClientVerificationPrompt
+    v-model="showVerificationPrompt"
+    :purpose="verificationPurpose"
+    @needs-email="verificationPurpose = 'email'"
+    @verified="handleVerification"
+  />
   <IdentifyModal v-model="showIdentifyModal" />
 </template>
 
 <script setup>
     import { onBeforeUnmount, ref, watch } from 'vue'
     import { useToast } from 'vue-toastification'
-    import { createAddress as createAddressRequest, deleteAddress as deleteAddressRequest, getAddresses, updateAddress as updateAddressRequest } from '@/services/api'
+    import {
+        createAddress as createAddressRequest,
+        deleteAddress as deleteAddressRequest,
+        getAddresses,
+        hasClientSensitiveAccess,
+        updateAddress as updateAddressRequest,
+    } from '@/services/api'
     import { useUserStore } from '@/stores/useUserStore'
     import IdentifyModal from './IdentifyModal.vue'
+    import ClientVerificationPrompt from './ClientVerificationPrompt.vue'
+    import { useClientSensitiveAccess } from '@/composables/useClientSensitiveAccess'
 
     const toast = useToast()
     const userStore = useUserStore()
 
     const props = defineProps({
-        modelValue: Boolean
+        modelValue: Boolean,
+        checkoutMode: {
+            type: Boolean,
+            default: false,
+        },
     })
 
     const emit = defineEmits(['update:modelValue', 'address-selected'])
+    const { isAuthorized: hasSensitiveAccess, refresh: refreshSensitiveAccess } = useClientSensitiveAccess()
 
     const view = ref('list')         // 'list' ou 'form'
     const step = ref(1)              // passo do formulário
@@ -264,6 +337,11 @@
     const isSaving = ref(false)
     const loadError = ref('')
     const showIdentifyModal = ref(false)
+    const showVerificationPrompt = ref(false)
+    const verificationPurpose = ref('sensitive')
+    const saveAddressPreference = ref(Boolean(userStore.addressStorageEnabled))
+    const customerEmail = ref('')
+    const pendingCheckoutAddress = ref(null)
     const addressToDelete = ref(null)
     const brazilStates = [
         'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO',
@@ -311,6 +389,13 @@
 
     const loadAddresses = async ({ showFormWhenEmpty = true } = {}) => {
         if (!userStore.isLogged) return []
+        if (!hasClientSensitiveAccess()) {
+            addresses.value = []
+            selectedId.value = null
+            localStorage.removeItem('selectedAddressId')
+            view.value = 'protected'
+            return null
+        }
 
         isLoadingAddresses.value = true
         loadError.value = ''
@@ -329,8 +414,13 @@
             return loadedAddresses
         } catch (error) {
             console.error('Não foi possível carregar os endereços da API.', error)
-            loadError.value = getErrorMessage(error, 'Não foi possível carregar os endereços.')
             addresses.value = []
+            if (error.response?.status === 403) {
+                refreshSensitiveAccess()
+                view.value = 'protected'
+                return null
+            }
+            loadError.value = getErrorMessage(error, 'Não foi possível carregar os endereços.')
             return null
         } finally {
             isLoadingAddresses.value = false
@@ -383,6 +473,8 @@
         view.value = 'form'
         step.value = 1
         form.value = createEmptyForm()
+        saveAddressPreference.value = Boolean(userStore.addressStorageEnabled)
+        customerEmail.value = ''
     }
 
     const showList = () => {
@@ -396,7 +488,17 @@
     const setSelectedAddress = (address, shouldNotify = true) => {
         selectedId.value = address.id
         localStorage.setItem('selectedAddressId', String(address.id))
-        emit('address-selected', address)
+        emit(
+            'address-selected',
+            props.checkoutMode
+                ? {
+                    address,
+                    addressId: address.id,
+                    saveToAccount: true,
+                    customerEmail: '',
+                }
+                : address,
+        )
         if (shouldNotify) notifyAddressUpdate()
     }
 
@@ -488,6 +590,19 @@
             reference: form.value.reference.trim() || null,
             is_default: Boolean(form.value.primary),
         }
+
+        if (props.checkoutMode) {
+            if (saveAddressPreference.value && !userStore.emailVerified) {
+                pendingCheckoutAddress.value = payload
+                verificationPurpose.value = 'email'
+                showVerificationPrompt.value = true
+                return
+            }
+
+            completeCheckoutAddress(payload)
+            return
+        }
+
         isSaving.value = true
 
         try {
@@ -520,6 +635,7 @@
                 if (selectedAddress) setSelectedAddress(selectedAddress, false)
             }
 
+            userStore.updateUser({ addressStorageEnabled: true })
             notifyAddressUpdate()
             showList()
             toast.success(
@@ -538,9 +654,79 @@
         emit('update:modelValue', false)
     }
 
+    const completeCheckoutAddress = (payload) => {
+        const address = {
+            ...payload,
+            nickname: payload.title,
+            recipientName: payload.recipient_name,
+            cep: payload.zip_code,
+        }
+
+        emit('address-selected', {
+            address,
+            addressId: null,
+            saveToAccount: Boolean(saveAddressPreference.value),
+            customerEmail: saveAddressPreference.value ? '' : customerEmail.value.trim(),
+        })
+        close()
+        pendingCheckoutAddress.value = null
+    }
+
+    const openSensitiveVerification = () => {
+        verificationPurpose.value = 'sensitive'
+        showVerificationPrompt.value = true
+    }
+
+    const handleVerification = async (data) => {
+        refreshSensitiveAccess()
+
+        if (verificationPurpose.value === 'email') {
+            if (data) userStore.updateUser(data)
+            if (pendingCheckoutAddress.value) {
+                completeCheckoutAddress(pendingCheckoutAddress.value)
+            }
+            return
+        }
+
+        if (hasClientSensitiveAccess()) {
+            view.value = 'list'
+            await loadAddresses()
+        }
+    }
+
+    const openAddressView = async () => {
+        if (props.checkoutMode && !userStore.addressStorageEnabled) {
+            addresses.value = []
+            showForm()
+            return
+        }
+
+        refreshSensitiveAccess()
+        if (!hasClientSensitiveAccess()) {
+            view.value = 'protected'
+            addresses.value = []
+            selectedId.value = null
+            localStorage.removeItem('selectedAddressId')
+            return
+        }
+
+        view.value = 'list'
+        await loadAddresses()
+    }
+
+    watch(hasSensitiveAccess, (authorized) => {
+        if (authorized || !props.modelValue || view.value !== 'list') return
+        addresses.value = []
+        selectedId.value = null
+        addressToDelete.value = null
+        localStorage.removeItem('selectedAddressId')
+        view.value = 'protected'
+    })
+
     watch(() => props.modelValue, async (isOpen) => {
         if (!isOpen) {
             showIdentifyModal.value = false
+            showVerificationPrompt.value = false
             return
         }
 
@@ -549,8 +735,7 @@
             return
         }
 
-        view.value = 'list'
-        await loadAddresses()
+        await openAddressView()
     }, { immediate: true })
 
     watch(() => userStore.isLogged, async (isLogged) => {
@@ -561,8 +746,7 @@
 
         if (props.modelValue) {
             showIdentifyModal.value = false
-            view.value = 'list'
-            await loadAddresses()
+            await openAddressView()
         }
     })
 
