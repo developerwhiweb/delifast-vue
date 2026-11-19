@@ -80,9 +80,9 @@
                   <strong>Desconto do cupom:</strong>
                   - {{ formatCurrency(order.couponDiscount) }}
                 </div>
-                <div class="summary-item mb-1" v-if="order.deliveryAddress">
+                <div class="summary-item mb-1 d-none" v-if="order.deliveryAddress">
                   <strong>Endereço de entrega:</strong> 
-                  {{ formatAddress(order.deliveryAddress) }}
+                  <!-- {{ formatAddress(order.deliveryAddress) }} -->
                 </div>
               </div>
 

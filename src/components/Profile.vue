@@ -92,7 +92,7 @@
                           <div class="info-value">{{ profile.email || 'Não informado' }}</div>
                           <button
                             type="button"
-                            class="btn btn-link btn-sm p-0 mt-2"
+                            class="btn btn-link btn-sm p-0 mt-2 ms-4"
                             @click="openEmailChange"
                           >
                             {{ profile.email ? 'Alterar e-mail' : 'Adicionar e-mail' }}
