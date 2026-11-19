@@ -12,6 +12,7 @@
       <div class="modal-body">
         <div v-if="!hasSensitiveAccess" class="empty-state protected-state">
           <i class="bi bi-eye-slash fs-2"></i>
+          <br>
           <strong>Seus pedidos estão protegidos</strong>
           <p>Confirme sua identidade pelo e-mail para visualizar o histórico e os endereços de entrega.</p>
           <button type="button" class="btn btn-outline-primary" @click="openSensitiveVerification">
