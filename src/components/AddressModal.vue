@@ -44,7 +44,7 @@
                 <h6 class="address-title">Endereços cadastrados</h6>
                 <!-- No lugar do botão Novo Endereço existente -->
                 <button
-                    v-if="addresses.length < 2"
+                    v-if="addresses.length < 1"
                     class="btn btn-outline-primary btn-sm"
                     @click="showForm"
                     :disabled="isLoadingAddresses || isSaving"
