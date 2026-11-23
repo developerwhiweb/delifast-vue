@@ -30,7 +30,7 @@
                     </div>
                     <div class="text-start">
                         <strong v-if="userStore.isLogged">
-                            Olá, <span class="name-user">{{ hasSensitiveAccess ? userStore.fullName : 'cliente' }}!</span>
+                            Olá, <span class="name-user">{{ userStore.fullName || 'cliente' }}!</span>
                         </strong>
 
                         <strong v-else>
@@ -492,7 +492,6 @@
     import { useCartStore } from '@/stores/useCartStore'
     import { useUserStore } from '@/stores/useUserStore'
     import { createOrder, getContacts, hasClientSensitiveAccess, validateCoupon } from '@/services/api'
-    import { useClientSensitiveAccess } from '@/composables/useClientSensitiveAccess'
     import { createOrderWhatsAppUrl, formatOrderWhatsAppMessage } from '@/utils/orderWhatsApp'
     import { buildCouponValidationItem } from '@/utils/couponPayload'
     import { refreshProductStocks, validateCartStock } from '@/utils/productStock'
@@ -501,7 +500,6 @@
     const toast = useToast()
     const cart = useCartStore()
     const userStore = useUserStore()
-    const { isAuthorized: hasSensitiveAccess } = useClientSensitiveAccess()
     const showModal = ref(false)
     const showAddressModal = ref(false)
     const showDeliveryMethodModal = ref(false)

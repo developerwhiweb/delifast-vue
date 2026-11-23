@@ -204,44 +204,6 @@
 
               <textarea v-model="form.reference" class="form-control"></textarea>
 
-              <div v-if="props.checkoutMode" class="mt-3">
-                <p class="form-label mb-2">Deseja salvar este endereço para utilizá-lo em próximas compras?</p>
-                <div class="d-flex flex-column gap-2">
-                  <div class="d-flex align-items-center gap-2">
-                    <label class="form-check mb-0">
-                      <input v-model="saveAddressPreference" class="form-check-input" type="radio" :value="true">
-                      <span class="form-check-label">Sim, desejo salvar</span>
-                    </label>
-                    <button
-                      type="button"
-                      class="btn btn-link btn-sm p-0 text-primary"
-                      aria-label="Explicação sobre salvar o endereço"
-                      @click.stop="openAddressSaveInfo(true)"
-                    >
-                      <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
-                    </button>
-                  </div>
-                  <div class="d-flex align-items-center gap-2">
-                    <label class="form-check mb-0">
-                      <input v-model="saveAddressPreference" class="form-check-input" type="radio" :value="false">
-                      <span class="form-check-label">Não desejo salvar</span>
-                    </label>
-                    <button
-                      type="button"
-                      class="btn btn-link btn-sm p-0 text-primary"
-                      aria-label="Explicação sobre não salvar o endereço"
-                      @click.stop="openAddressSaveInfo(false)"
-                    >
-                      <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
-                    </button>
-                  </div>
-                </div>
-
-                <p v-if="saveAddressPreference && !userStore.emailVerified && !userStore.hasEmail && !userStore.canBindEmail" class="small text-warning mt-2 mb-0">
-                  Esta conta já possui dados associados e não pode cadastrar um novo e-mail sem verificação adicional. Você ainda pode continuar sem salvar o endereço.
-                </p>
-              </div>
-
               <div class="form-check mt-3">
                 <input type="checkbox" v-model="form.primary" class="form-check-input">
                 <label class="form-check-label">
@@ -265,46 +227,6 @@
 
         </div>
       </div>
-    </div>
-  </div>
-  <div
-    v-if="addressSaveInfoChoice !== null"
-    class="address-save-info-overlay"
-    role="presentation"
-    @click.self="closeAddressSaveInfo"
-  >
-    <div
-      class="address-save-info-dialog bg-white rounded-3 shadow p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="address-save-info-title"
-    >
-      <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
-        <h5 id="address-save-info-title" class="mb-0">
-          {{ addressSaveInfoChoice ? 'Salvar endereço' : 'Não salvar endereço' }}
-        </h5>
-        <button
-          type="button"
-          class="btn-close"
-          aria-label="Fechar explicação"
-          @click="closeAddressSaveInfo"
-        ></button>
-      </div>
-      <p v-if="addressSaveInfoChoice" class="mb-0">
-        Salvo na sua conta, o endereço poderá ser selecionado automaticamente nas próximas compras, sem precisar preenchê-lo novamente. 
-        <br>
-        <br>
-        Ao informar e confirmar seu e-mail, você terá acesso às áreas restritas da sua conta, como <strong>Meus Pedidos, Meu Perfil e Meus Endereços</strong>. 
-        <br>
-        <br>
-        A confirmação será realizada por meio do e-mail informado. Além disso, o pedido mantém uma cópia independente do endereço utilizado na compra.
-      </p>
-      <p v-else class="mb-0">
-        O endereço será utilizado apenas neste pedido e não ficará salvo na sua conta. Na próxima compra, você precisará informá-lo novamente. 
-        <br>
-        <br>
-        O e-mail, caso informado, também será utilizado somente neste pedido. Sem um e-mail confirmado, você não terá acesso às áreas restritas da conta, como <strong>Meus Pedidos, Meu Perfil e Meus Endereços</strong>.
-      </p>
     </div>
   </div>
   <div
@@ -385,9 +307,14 @@
     const loadError = ref('')
     const showIdentifyModal = ref(false)
     const showVerificationPrompt = ref(false)
-    const addressSaveInfoChoice = ref(null)
     const verificationPurpose = ref('sensitive')
-    const saveAddressPreference = ref(Boolean(userStore.addressStorageEnabled))
+    const shouldSaveAddress = () => Boolean(
+        userStore.addressStorageEnabled
+        || userStore.emailVerified
+        || userStore.hasEmail
+        || userStore.canBindEmail,
+    )
+    const saveAddressToAccount = ref(shouldSaveAddress())
     const pendingCheckoutAddress = ref(null)
     const addressToDelete = ref(null)
     const brazilStates = [
@@ -520,7 +447,7 @@
         view.value = 'form'
         step.value = 1
         form.value = createEmptyForm()
-        saveAddressPreference.value = Boolean(userStore.addressStorageEnabled)
+        saveAddressToAccount.value = shouldSaveAddress()
     }
 
     const showList = () => {
@@ -637,7 +564,7 @@
         }
 
         if (props.checkoutMode) {
-            if (saveAddressPreference.value && !userStore.emailVerified) {
+            if (saveAddressToAccount.value && !userStore.emailVerified) {
                 pendingCheckoutAddress.value = payload
                 verificationPurpose.value = 'email'
                 showVerificationPrompt.value = true
@@ -696,16 +623,7 @@
     }
 
     const close = () => {
-        closeAddressSaveInfo()
         emit('update:modelValue', false)
-    }
-
-    const openAddressSaveInfo = (choice) => {
-        addressSaveInfoChoice.value = choice
-    }
-
-    const closeAddressSaveInfo = () => {
-        addressSaveInfoChoice.value = null
     }
 
     const completeCheckoutAddress = (payload) => {
@@ -719,7 +637,7 @@
         emit('address-selected', {
             address,
             addressId: null,
-            saveToAccount: Boolean(saveAddressPreference.value),
+            saveToAccount: Boolean(saveAddressToAccount.value),
         })
         close()
         pendingCheckoutAddress.value = null
@@ -782,7 +700,6 @@
         if (!isOpen) {
             showIdentifyModal.value = false
             showVerificationPrompt.value = false
-            closeAddressSaveInfo()
             return
         }
 
@@ -814,22 +731,6 @@
 
     onBeforeUnmount(() => clearTimeout(debounceTimer))
 </script>
-
-<style scoped>
-.address-save-info-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 12000;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  background: rgba(0, 0, 0, 0.55);
-}
-
-.address-save-info-dialog {
-  width: min(100%, 440px);
-}
-</style>
 
 
 <style scoped>
