@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
+import ClientVerificationPrompt from '@/components/ClientVerificationPrompt.vue'
 
 const orderApi = vi.hoisted(() => ({
   getOrder: vi.fn(),
@@ -141,5 +142,21 @@ describe('OrderHistoryModal customizations', () => {
     expect(wrapper.find('.protected-state').text()).toContain('Seus pedidos estão protegidos')
     expect(orderApi.getOrders).not.toHaveBeenCalled()
     wrapper.unmount()
+  })
+
+  it('loads orders only once after sensitive access is granted', async () => {
+    orderApi.hasClientSensitiveAccess.mockReturnValue(false)
+
+    const wrapper = mount(OrderHistoryModal, {
+      props: { modelValue: true, userId: 7 },
+    })
+    await flushPromises()
+
+    orderApi.hasClientSensitiveAccess.mockReturnValue(true)
+    window.dispatchEvent(new CustomEvent('client-sensitive-access-changed'))
+    wrapper.findComponent(ClientVerificationPrompt).vm.$emit('verified')
+    await flushPromises()
+
+    expect(orderApi.getOrders).toHaveBeenCalledTimes(1)
   })
 })

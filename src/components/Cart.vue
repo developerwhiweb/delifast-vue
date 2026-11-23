@@ -1040,9 +1040,6 @@
             await updateSelectedAddress()
             loadSavedDeliveryMethod()
             loadSavedPaymentMethod()
-            if (selectedDeliveryMethod.value?.value === 'delivery') {
-                setTimeout(openAddressModal, 300)
-            }
         } else {
             selectedAddress.value = null
             selectedAddressId.value = null
@@ -1097,9 +1094,6 @@
         updateSelectedAddress()
         loadSavedDeliveryMethod()
         loadSavedPaymentMethod()
-        if (selectedDeliveryMethod.value?.value === 'delivery' && userStore.isLogged) {
-            openAddressModal()
-        }
         
         window.addEventListener('storage', handleStorageChange)
         window.addEventListener('addresses-updated', handleCustomAddressUpdate)

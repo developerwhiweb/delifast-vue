@@ -403,11 +403,8 @@ const openSensitiveVerification = () => {
   showVerificationPrompt.value = true
 }
 
-const handleVerification = async (data) => {
+const handleVerification = (data) => {
   refreshSensitiveAccess()
-  if (verificationPurpose.value === 'sensitive') {
-    fetchOrders()
-  }
   if (verificationPurpose.value === 'email' && data) userStore.updateUser(data)
   verificationPurpose.value = 'sensitive'
 }
