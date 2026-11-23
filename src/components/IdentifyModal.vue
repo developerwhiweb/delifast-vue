@@ -11,7 +11,9 @@
         <div class="modal-header d-flex justify-content-between align-items-center">
           <div class="d-flex align-items-center gap-2">
             <i class="bi bi-person-circle fs-4 text-secondary"></i>
-            <h5 class="modal-title mb-0">{{ userStore.isLogged ? 'Minha conta' : 'Identifique-se' }}</h5>
+            <h5 class="modal-title mb-0">
+              {{ userStore.isLogged ? 'Minha conta' : needsEmail ? 'Complete seu cadastro' : 'Identifique-se' }}
+            </h5>
           </div>
           <button type="button" class="btn-close" aria-label="Fechar" @click="close"></button>
         </div>
@@ -59,12 +61,27 @@
               >
             </div>
 
+            <div v-if="needsEmail" class="mb-3">
+              <label for="client-email" class="form-label">E-mail</label>
+              <input
+                id="client-email"
+                v-model.trim="email"
+                type="email"
+                class="form-control"
+                placeholder="seu@email.com"
+                autocomplete="email"
+                maxlength="255"
+                required
+                :disabled="isLoading"
+              >
+            </div>
+
             <div v-if="errorMessage" class="alert alert-danger py-2" role="alert">
               {{ errorMessage }}
             </div>
 
             <button type="submit" class="btn btn-primary w-100" :disabled="isLoading">
-              {{ isLoading ? 'Entrando...' : 'Continuar' }}
+              {{ isLoading ? 'Aguarde...' : needsEmail ? 'Criar conta' : 'Continuar' }}
             </button>
           </form>
         </div>
@@ -89,6 +106,8 @@ const userStore = useUserStore()
 
 const name = ref('')
 const phone = ref('')
+const email = ref('')
+const needsEmail = ref(false)
 const isLoading = ref(false)
 const isLoggingOut = ref(false)
 const errorMessage = ref('')
@@ -129,6 +148,7 @@ const login = async () => {
     const response = await clientApi.login({
       name: name.value.trim(),
       phone: phone.value.trim(),
+      ...(needsEmail.value ? { email: email.value.trim() } : {}),
     })
     const client = response.data.data.client
 
@@ -157,6 +177,9 @@ const login = async () => {
     close()
   } catch (error) {
     console.error('Não foi possível autenticar o cliente.', error)
+    if (error.response?.data?.errors?.email) {
+      needsEmail.value = true
+    }
     errorMessage.value = getErrorMessage(error)
     toast.error(errorMessage.value)
   } finally {
@@ -188,6 +211,8 @@ watch(() => props.modelValue, (isOpen) => {
   } else if (isOpen) {
     name.value = ''
     phone.value = ''
+    email.value = ''
+    needsEmail.value = false
   }
 })
 

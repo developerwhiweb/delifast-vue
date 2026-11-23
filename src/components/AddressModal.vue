@@ -240,19 +240,6 @@
                 <p v-if="saveAddressPreference && !userStore.emailVerified && !userStore.hasEmail && !userStore.canBindEmail" class="small text-warning mt-2 mb-0">
                   Esta conta já possui dados associados e não pode cadastrar um novo e-mail sem verificação adicional. Você ainda pode continuar sem salvar o endereço.
                 </p>
-
-                <div v-if="!saveAddressPreference" class="mt-3">
-                  <label class="form-label" for="order-contact-email">E-mail para este pedido <small>(opcional)</small></label>
-                  <input
-                    id="order-contact-email"
-                    v-model.trim="customerEmail"
-                    type="email"
-                    class="form-control"
-                    autocomplete="email"
-                    maxlength="255"
-                  >
-                  <small class="text-muted">Este e-mail será usado somente neste pedido.</small>
-                </div>
               </div>
 
               <div class="form-check mt-3">
@@ -401,7 +388,6 @@
     const addressSaveInfoChoice = ref(null)
     const verificationPurpose = ref('sensitive')
     const saveAddressPreference = ref(Boolean(userStore.addressStorageEnabled))
-    const customerEmail = ref('')
     const pendingCheckoutAddress = ref(null)
     const addressToDelete = ref(null)
     const brazilStates = [
@@ -535,7 +521,6 @@
         step.value = 1
         form.value = createEmptyForm()
         saveAddressPreference.value = Boolean(userStore.addressStorageEnabled)
-        customerEmail.value = ''
     }
 
     const showList = () => {
@@ -556,7 +541,6 @@
                     address,
                     addressId: address.id,
                     saveToAccount: true,
-                    customerEmail: '',
                 }
                 : address,
         )
@@ -736,7 +720,6 @@
             address,
             addressId: null,
             saveToAccount: Boolean(saveAddressPreference.value),
-            customerEmail: saveAddressPreference.value ? '' : customerEmail.value.trim(),
         })
         close()
         pendingCheckoutAddress.value = null

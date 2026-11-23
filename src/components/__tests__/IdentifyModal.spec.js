@@ -30,6 +30,8 @@ describe('IdentifyModal', () => {
   })
 
   it('sends name and formatted phone, then logs in the returned client', async () => {
+    expect(wrapper.find('#client-email').exists()).toBe(false)
+
     vi.spyOn(clientApi, 'login').mockResolvedValue({
       data: {
         data: {
@@ -56,6 +58,53 @@ describe('IdentifyModal', () => {
     expect(userStore.isLogged).toBe(true)
     expect(userStore.userId).toBe(7)
     expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
+  })
+
+  it('asks for an email only after the API identifies a first-time registration', async () => {
+    const loginSpy = vi.spyOn(clientApi, 'login')
+      .mockRejectedValueOnce({
+        response: {
+          status: 422,
+          data: { errors: { email: ['Informe um e-mail válido para criar sua conta.'] } },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            token: 'test-token',
+            client: {
+              id: 8,
+              name: 'João Silva',
+              phone: '11999999999',
+              has_email: true,
+              email_verified: false,
+            },
+          },
+        },
+      })
+
+    await wrapper.find('#client-name').setValue('João Silva')
+    await wrapper.find('#client-phone').setValue('11999999999')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(loginSpy).toHaveBeenNthCalledWith(1, {
+      name: 'João Silva',
+      phone: '(11) 99999-9999',
+    })
+    expect(wrapper.find('#client-email').exists()).toBe(true)
+    expect(userStore.isLogged).toBe(false)
+
+    await wrapper.find('#client-email').setValue('joao@example.com')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(loginSpy).toHaveBeenNthCalledWith(2, {
+      name: 'João Silva',
+      phone: '(11) 99999-9999',
+      email: 'joao@example.com',
+    })
+    expect(userStore.userId).toBe(8)
   })
 
   it('keeps the modal open and shows the API message when login fails', async () => {

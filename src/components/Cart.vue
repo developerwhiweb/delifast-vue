@@ -510,7 +510,6 @@
     const selectedAddress = ref(null)
     const selectedAddressId = ref(null)
     const selectedAddressSaveToAccount = ref(false)
-    const orderEmail = ref('')
     const selectedDeliveryMethod = ref(null)
     const selectedPaymentMethod = ref('')
     const cashChange = ref(null)
@@ -868,7 +867,6 @@
             selectedAddress.value = address.address
             selectedAddressId.value = address.addressId || null
             selectedAddressSaveToAccount.value = Boolean(address.saveToAccount)
-            orderEmail.value = address.customerEmail || ''
             if (selectedAddressId.value) {
                 localStorage.setItem('selectedAddressId', String(selectedAddressId.value))
             } else {
@@ -879,7 +877,6 @@
             selectedAddress.value = address
             selectedAddressId.value = address.id || null
             selectedAddressSaveToAccount.value = Boolean(address.id)
-            orderEmail.value = ''
         } else {
             selectedAddress.value = null
             selectedAddressId.value = null
@@ -1050,7 +1047,6 @@
             selectedAddress.value = null
             selectedAddressId.value = null
             selectedAddressSaveToAccount.value = false
-            orderEmail.value = ''
             selectedDeliveryMethod.value = null
             selectedPaymentMethod.value = ''
             cashChange.value = null
@@ -1195,9 +1191,6 @@
             save_address: selectedDeliveryMethod.value.value === 'delivery'
                 ? selectedAddressSaveToAccount.value
                 : false,
-            customer_email: selectedDeliveryMethod.value.value === 'delivery'
-                ? orderEmail.value || null
-                : null,
             subtotal: cart.subTotal,
             discount: orderDiscount.value,
             coupon_code: couponForWhatsApp?.code ?? null,
