@@ -96,7 +96,10 @@
                                 </div>
                             </div>
 
-                            <div v-if="selectedDeliveryMethod?.value === 'delivery' && selectedAddress" class="d-flex text-muted small mt-2">
+                            <div
+                                v-if="selectedDeliveryMethod?.value === 'delivery' && (selectedAddress || selectedAddressId)"
+                                class="d-flex text-muted small mt-2"
+                            >
                                 <svg width="11" height="16" viewBox="0 0 11 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M3.451 12.0711C3.55472 12.0469 3.61938 11.9425 3.59513 11.8387C3.57021 11.7344 3.46447 11.6697 3.36276 11.6946C2.18408 11.9728 1.50781 12.4537 1.50781 13.0141C1.50781 14.0196 3.56415 14.5625 5.4991 14.5625C7.43422 14.5625 9.49038 14.0197 9.49038 13.0141C9.49038 12.4537 8.81415 11.9728 7.63544 11.6946C7.53239 11.6697 7.42732 11.7344 7.40306 11.8387C7.37882 11.9425 7.4428 12.0469 7.5472 12.0711C8.49284 12.2941 9.10373 12.6645 9.10373 13.0141C9.10373 13.5637 7.62331 14.1759 5.49971 14.1759C3.37544 14.1759 1.89569 13.5637 1.89569 13.0141C1.89434 12.6645 2.50537 12.2947 3.451 12.0711Z" fill="#595959"/>
                                     <path d="M8.17916 11.0271C8.07543 11.0035 7.97104 11.0668 7.94611 11.1705C7.92119 11.2743 7.98585 11.3787 8.08957 11.4036C9.62253 11.768 10.6127 12.4435 10.6127 13.1251C10.6127 14.2129 8.27148 15.1316 5.49993 15.1316C2.72837 15.1316 0.387192 14.213 0.387192 13.1251C0.387192 12.4435 1.37729 11.7673 2.91028 11.4036C3.014 11.3787 3.07866 11.2749 3.05374 11.1705C3.02882 11.0668 2.92375 11.0035 2.82069 11.0271C1.05472 11.4467 0 12.2314 0 13.1251C0 14.4668 2.41601 15.5182 5.5 15.5182C8.58416 15.5182 11 14.4668 11 13.1251C10.9993 12.2314 9.9451 11.4467 8.17916 11.0271Z" fill="#595959"/>
@@ -104,19 +107,39 @@
                                     <path d="M5.50096 8.56332C7.3647 8.56332 8.88083 7.04719 8.88083 5.18346C8.88083 3.31972 7.3647 1.80359 5.50096 1.80359C3.63722 1.80359 2.12109 3.31972 2.12109 5.18346C2.12109 7.04719 3.63722 8.56332 5.50096 8.56332ZM5.50096 2.19103C7.15112 2.19103 8.49339 3.53339 8.49339 5.18415C8.49339 6.8343 7.15103 8.17658 5.50096 8.17658C3.85089 8.17658 2.50784 6.83422 2.50784 5.18415C2.50784 3.53332 3.8502 2.19103 5.50096 2.19103Z" fill="#595959"/>
                                 </svg>
 
-                                <p class="ms-2 mb-0 col-11">
-                                    {{ formatAddress(selectedAddress) }} -
+                                <p v-if="hasSensitiveAccess && selectedAddress" class="ms-2 mb-0 col-11">
+                                    {{ formatAddress(selectedAddress) }}
                                     <button 
-                                        @click="openAddressModal" 
+                                        @click="requestAddressAction('edit')"
                                         class="btn btn-sm p-0 fw-medium border-0 bg-transparent text-primary"
                                         style="line-height: 0;"
+                                        aria-label="Editar endereço"
                                     >
-                                        Editar
+                                        <i class="bi bi-pencil-square me-1" aria-hidden="true"></i>Editar
                                     </button>
                                 </p>
+                                <div v-else class="address-protected d-flex align-items-center gap-2 ms-2">
+                                    <span class="address-redaction" role="img" aria-label="Endereço oculto"></span>
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm p-0 border-0 bg-transparent text-primary"
+                                        aria-label="Visualizar endereço"
+                                        @click.stop="requestAddressAction('view')"
+                                    >
+                                        <i class="bi bi-eye" aria-hidden="true"></i>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm p-0 border-0 bg-transparent text-primary"
+                                        aria-label="Editar endereço"
+                                        @click.stop="requestAddressAction('edit')"
+                                    >
+                                        <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                    </button>
+                                </div>
                             </div>
 
-                            <div v-else-if="selectedDeliveryMethod?.value === 'delivery' && !selectedAddress" class="d-flex text-muted small mt-2">
+                            <div v-else-if="selectedDeliveryMethod?.value === 'delivery'" class="d-flex text-muted small mt-2">
                                 <p class="mb-0">Clique no botão + para adicionar um endereço de entrega</p>
                             </div>
 
@@ -459,6 +482,13 @@
             @address-selected="handleAddressSelected"
         />
 
+        <ClientVerificationPrompt
+            v-model="showAddressVerificationPrompt"
+            :purpose="addressVerificationPurpose"
+            @needs-email="addressVerificationPurpose = 'email'"
+            @verified="handleAddressAccessVerified"
+        />
+
         <DeliveryMethodModal
             v-model="showDeliveryMethodModal"
             @method-selected="handleDeliveryMethodSelected"
@@ -484,6 +514,7 @@
     import { ref, onMounted, computed, onUnmounted, watch } from 'vue'
     import { useToast } from 'vue-toastification'
     import IdentifyModal from './IdentifyModal.vue'
+    import ClientVerificationPrompt from './ClientVerificationPrompt.vue'
     import ProductModal from './ProductModal.vue'
     import AddressModal from './AddressModal.vue'
     import DeliveryMethodModal from './DeliveryMethodModal.vue'
@@ -491,7 +522,14 @@
     import CashChangeModal from './CashChangeModal.vue'
     import { useCartStore } from '@/stores/useCartStore'
     import { useUserStore } from '@/stores/useUserStore'
-    import { createOrder, getContacts, hasClientSensitiveAccess, validateCoupon } from '@/services/api'
+    import {
+        createOrder,
+        getAddresses,
+        getContacts,
+        hasClientSensitiveAccess,
+        validateCoupon,
+    } from '@/services/api'
+    import { useClientSensitiveAccess } from '@/composables/useClientSensitiveAccess'
     import { createOrderWhatsAppUrl, formatOrderWhatsAppMessage } from '@/utils/orderWhatsApp'
     import { buildCouponValidationItem } from '@/utils/couponPayload'
     import { refreshProductStocks, validateCartStock } from '@/utils/productStock'
@@ -500,8 +538,12 @@
     const toast = useToast()
     const cart = useCartStore()
     const userStore = useUserStore()
+    const { isAuthorized: hasSensitiveAccess, refresh: refreshSensitiveAccess } = useClientSensitiveAccess()
     const showModal = ref(false)
     const showAddressModal = ref(false)
+    const showAddressVerificationPrompt = ref(false)
+    const addressVerificationPurpose = ref('sensitive')
+    const pendingAddressAction = ref(null)
     const showDeliveryMethodModal = ref(false)
     const showPaymentMethodModal = ref(false)
     const showCashChangeModal = ref(false)
@@ -522,8 +564,6 @@
     const handleSensitiveAccessChange = () => {
         if (hasClientSensitiveAccess() || !selectedAddressId.value) return
         selectedAddress.value = null
-        selectedAddressId.value = null
-        localStorage.removeItem('selectedAddressId')
     }
 
     const normalizeDeliveryAddress = (address) => ({
@@ -858,6 +898,55 @@
             return
         }
         showAddressModal.value = true
+    }
+
+    const restoreSelectedAddress = async () => {
+        if (selectedAddress.value || !selectedAddressId.value) return
+
+        try {
+            const addresses = await getAddresses()
+            selectedAddress.value = addresses.find(
+                (address) => String(address.id) === String(selectedAddressId.value),
+            ) || null
+
+            if (!selectedAddress.value) {
+                selectedAddressId.value = null
+                localStorage.removeItem('selectedAddressId')
+                toast.warning('O endereço selecionado não está mais disponível.')
+            }
+        } catch (error) {
+            console.error('Não foi possível carregar o endereço selecionado.', error)
+            toast.error(error.response?.data?.message || 'Não foi possível carregar o endereço.')
+        }
+    }
+
+    const continueAddressAction = async (action) => {
+        await restoreSelectedAddress()
+        if (action === 'edit') openAddressModal()
+    }
+
+    const requestAddressAction = async (action) => {
+        refreshSensitiveAccess()
+        if (!selectedAddress.value && !selectedAddressId.value) return
+
+        if (hasSensitiveAccess.value) {
+            await continueAddressAction(action)
+            return
+        }
+
+        pendingAddressAction.value = action
+        addressVerificationPurpose.value = 'sensitive'
+        showAddressVerificationPrompt.value = true
+    }
+
+    const handleAddressAccessVerified = async () => {
+        refreshSensitiveAccess()
+        addressVerificationPurpose.value = 'sensitive'
+        if (!hasClientSensitiveAccess()) return
+
+        const action = pendingAddressAction.value
+        pendingAddressAction.value = null
+        await continueAddressAction(action)
     }
 
     const handleAddressSelected = (address) => {
@@ -1399,6 +1488,13 @@
 .address-title{
     color: #595959;
     font-size: 0.938rem;
+}
+.address-redaction {
+    display: inline-block;
+    width: 7rem;
+    height: 0.75rem;
+    border-radius: 0.2rem;
+    background: #595959;
 }
 .icon-address{
     background: var(--bg-orange); 
