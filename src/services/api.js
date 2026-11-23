@@ -163,7 +163,11 @@ export const clientApi = {
             `${clientEndpoint}/email-verification/confirm`,
             { code },
         )
-        clearClientSensitiveAccess()
+        const access = response.data?.data?.sensitive_access
+        if (!access?.token || !access?.expires_at) {
+            throw new Error('A resposta da confirmação não contém uma autorização temporária.')
+        }
+        setClientSensitiveAccess(access.token, access.expires_at)
         return response
     },
     requestSensitiveAccess: () => api.post(`${clientEndpoint}/sensitive-access/request`),

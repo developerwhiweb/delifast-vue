@@ -107,6 +107,22 @@ describe('IdentifyModal', () => {
     expect(userStore.userId).toBe(8)
   })
 
+  it('shows a friendly message when the API requires an email for registration', async () => {
+    vi.spyOn(clientApi, 'login').mockRejectedValue({
+      response: { status: 422, data: { errors: { email: ['validation.required'] } } },
+    })
+
+    await wrapper.find('#client-name').setValue('João Silva')
+    await wrapper.find('#client-phone').setValue('11999999999')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('#client-email').exists()).toBe(true)
+    expect(wrapper.find('[role="alert"]').text()).toBe(
+      'Informe seu e-mail para concluir o cadastro.',
+    )
+  })
+
   it('keeps the modal open and shows the API message when login fails', async () => {
     vi.spyOn(clientApi, 'login').mockRejectedValue({
       response: { data: { message: 'Telefone já associado a outro nome.' } },

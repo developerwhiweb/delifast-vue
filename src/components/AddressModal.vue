@@ -737,8 +737,10 @@
             if (data) userStore.updateUser(data)
             if (pendingCheckoutAddress.value) {
                 completeCheckoutAddress(pendingCheckoutAddress.value)
+                verificationPurpose.value = 'sensitive'
+                return
             }
-            return
+            verificationPurpose.value = 'sensitive'
         }
 
         if (hasClientSensitiveAccess()) {

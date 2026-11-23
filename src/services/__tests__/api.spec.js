@@ -6,6 +6,8 @@ if (typeof window === 'undefined') {
 
 const {
   api,
+  clearClientSensitiveAccess,
+  clientApi,
   createAddress,
   deleteAddress,
   getAddresses,
@@ -16,6 +18,7 @@ const {
   getOrders,
   getProducts,
   getServiceLocations,
+  hasClientSensitiveAccess,
   createOrder,
   updateAddress,
 } = await import('../api')
@@ -210,5 +213,32 @@ describe('API list endpoints', () => {
     await createOrder(payload)
 
     expect(postSpy).toHaveBeenCalledWith('/client/orders', payload)
+  })
+
+  it('grants sensitive access from the email confirmation response', async () => {
+    const expiresAt = new Date(Date.now() + 60_000).toISOString()
+    const response = {
+      data: {
+        data: {
+          sensitive_access: {
+            token: 'temporary-access-token',
+            expires_at: expiresAt,
+          },
+        },
+      },
+    }
+    const postSpy = vi.spyOn(api, 'post').mockResolvedValue(response)
+
+    try {
+      await expect(clientApi.confirmEmailVerification('123456')).resolves.toBe(response)
+
+      expect(postSpy).toHaveBeenCalledWith(
+        '/client/email-verification/confirm',
+        { code: '123456' },
+      )
+      expect(hasClientSensitiveAccess()).toBe(true)
+    } finally {
+      clearClientSensitiveAccess()
+    }
   })
 })

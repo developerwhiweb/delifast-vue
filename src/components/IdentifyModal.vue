@@ -131,6 +131,13 @@ const formatPhone = () => {
 
 const getErrorMessage = (error) => {
   const validationErrors = error.response?.data?.errors
+  const emailError = validationErrors?.email
+  const firstEmailError = Array.isArray(emailError) ? emailError[0] : emailError
+
+  if (firstEmailError === 'validation.required') {
+    return 'Informe seu e-mail para concluir o cadastro.'
+  }
+
   const firstValidationError = validationErrors
     ? Object.values(validationErrors).flat()[0]
     : null

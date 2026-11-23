@@ -467,8 +467,11 @@ const openEmailChange = () => {
 
 const handleVerification = async () => {
   refreshSensitiveAccess()
-  if (verificationPurpose.value === 'sensitive') {
+  const isEmailVerification = verificationPurpose.value !== 'sensitive'
+  if (verificationPurpose.value === 'sensitive' || hasClientSensitiveAccess()) {
+    verificationPurpose.value = 'sensitive'
     await loadProfile()
+    if (isEmailVerification) toast.success('E-mail confirmado com sucesso.')
     return
   }
 
