@@ -571,6 +571,18 @@
                 return
             }
 
+            if (saveAddressToAccount.value && !hasClientSensitiveAccess()) {
+                pendingCheckoutAddress.value = payload
+                verificationPurpose.value = 'sensitive'
+                showVerificationPrompt.value = true
+                return
+            }
+
+            if (saveAddressToAccount.value) {
+                await persistCheckoutAddress(payload)
+                return
+            }
+
             completeCheckoutAddress(payload)
             return
         }
@@ -643,6 +655,38 @@
         pendingCheckoutAddress.value = null
     }
 
+    const persistCheckoutAddress = async (payload) => {
+        isSaving.value = true
+
+        try {
+            const response = await createAddressRequest(payload)
+            const savedAddress = response.data?.data
+            if (!savedAddress?.id) {
+                throw new Error('A resposta do cadastro não contém o endereço salvo.')
+            }
+
+            const address = {
+                ...savedAddress,
+                nickname: savedAddress.title ?? '',
+                recipientName: savedAddress.recipient_name ?? '',
+                cep: savedAddress.zip_code ?? '',
+                primary: Boolean(savedAddress.is_default),
+            }
+
+            addresses.value = [address]
+            userStore.updateUser({ addressStorageEnabled: true })
+            setSelectedAddress(address)
+            pendingCheckoutAddress.value = null
+            close()
+            toast.success('Endereço cadastrado com sucesso!', { timeout: 3000 })
+        } catch (error) {
+            console.error('Não foi possível salvar o endereço do checkout.', error)
+            toast.error(getErrorMessage(error, 'Não foi possível salvar o endereço.'))
+        } finally {
+            isSaving.value = false
+        }
+    }
+
     const openSensitiveVerification = () => {
         verificationPurpose.value = 'sensitive'
         showVerificationPrompt.value = true
@@ -653,12 +697,19 @@
 
         if (verificationPurpose.value === 'email') {
             if (data) userStore.updateUser(data)
-            if (pendingCheckoutAddress.value) {
-                completeCheckoutAddress(pendingCheckoutAddress.value)
+        }
+
+        if (pendingCheckoutAddress.value) {
+            if (!hasClientSensitiveAccess()) {
                 verificationPurpose.value = 'sensitive'
+                showVerificationPrompt.value = true
                 return
             }
+
+            const payload = pendingCheckoutAddress.value
             verificationPurpose.value = 'sensitive'
+            await persistCheckoutAddress(payload)
+            return
         }
 
         if (hasClientSensitiveAccess()) {
