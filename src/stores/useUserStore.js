@@ -11,6 +11,7 @@ export const useUserStore = defineStore('user', {
     hasEmail: false,
     emailVerified: false,
     addressStorageEnabled: false,
+    hasSavedAddress: false,
     canBindEmail: false,
     isLogged: false     // Status de login
   }),
@@ -28,6 +29,7 @@ export const useUserStore = defineStore('user', {
       hasEmail: state.hasEmail,
       emailVerified: state.emailVerified,
       addressStorageEnabled: state.addressStorageEnabled,
+      hasSavedAddress: state.hasSavedAddress,
     }),
     
     // Nome de exibição (primeiro nome)
@@ -49,6 +51,11 @@ export const useUserStore = defineStore('user', {
       this.emailVerified = Boolean(userData.emailVerified ?? userData.email_verified)
       this.addressStorageEnabled = Boolean(
         userData.addressStorageEnabled ?? userData.address_storage_enabled,
+      )
+      this.hasSavedAddress = Boolean(
+        userData.hasSavedAddress
+          ?? userData.has_saved_address
+          ?? this.addressStorageEnabled,
       )
       this.canBindEmail = Boolean(userData.canBindEmail ?? userData.can_bind_email)
       this.isLogged = true
@@ -83,6 +90,12 @@ export const useUserStore = defineStore('user', {
       if (Object.prototype.hasOwnProperty.call(userData, 'address_storage_enabled')) {
         this.addressStorageEnabled = Boolean(userData.address_storage_enabled)
       }
+      if (Object.prototype.hasOwnProperty.call(userData, 'hasSavedAddress')) {
+        this.hasSavedAddress = Boolean(userData.hasSavedAddress)
+      }
+      if (Object.prototype.hasOwnProperty.call(userData, 'has_saved_address')) {
+        this.hasSavedAddress = Boolean(userData.has_saved_address)
+      }
       if (Object.prototype.hasOwnProperty.call(userData, 'canBindEmail')) {
         this.canBindEmail = Boolean(userData.canBindEmail)
       }
@@ -109,6 +122,7 @@ export const useUserStore = defineStore('user', {
       this.hasEmail = false
       this.emailVerified = false
       this.addressStorageEnabled = false
+      this.hasSavedAddress = false
       this.canBindEmail = false
       this.isLogged = false
       clearClientToken()
@@ -128,6 +142,7 @@ export const useUserStore = defineStore('user', {
         hasEmail: this.hasEmail,
         emailVerified: this.emailVerified,
         addressStorageEnabled: this.addressStorageEnabled,
+        hasSavedAddress: this.hasSavedAddress,
         canBindEmail: this.canBindEmail,
       }))
     },
@@ -151,6 +166,11 @@ export const useUserStore = defineStore('user', {
           this.emailVerified = Boolean(data.emailVerified ?? data.email_verified)
           this.addressStorageEnabled = Boolean(
             data.addressStorageEnabled ?? data.address_storage_enabled,
+          )
+          this.hasSavedAddress = Boolean(
+            data.hasSavedAddress
+              ?? data.has_saved_address
+              ?? this.addressStorageEnabled,
           )
           this.canBindEmail = Boolean(data.canBindEmail ?? data.can_bind_email)
           this.isLogged = true
@@ -193,6 +213,7 @@ export const useUserStore = defineStore('user', {
       'hasEmail',
       'emailVerified',
       'addressStorageEnabled',
+      'hasSavedAddress',
       'canBindEmail',
       'isLogged',
     ]

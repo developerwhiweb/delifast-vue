@@ -48,12 +48,12 @@
             <div v-if="userStore.isLogged" class="d-flex align-items-center justify-content-between mb-3 rounded my-2">
                 <div
                     class="contorno p-2 d-flex align-items-start justify-content-between rounded-3 w-100"
-                    :class="{ 'not-address': !selectedDeliveryMethod || (selectedDeliveryMethod?.value === 'delivery' && !selectedAddress) }"
+                    :class="{ 'not-address': !selectedDeliveryMethod || (selectedDeliveryMethod?.value === 'delivery' && !hasAddressForDelivery) }"
                 >
                     <!-- LEFT ICON -->
                     <div class="d-flex align-items-start w-100">
                         <div class="icon-address rounded-3 d-flex justify-content-center align-items-center p-3 me-2"
-                            :class="{ 'not-address': !selectedDeliveryMethod || (selectedDeliveryMethod?.value === 'delivery' && !selectedAddress) }">
+                            :class="{ 'not-address': !selectedDeliveryMethod || (selectedDeliveryMethod?.value === 'delivery' && !hasAddressForDelivery) }">
                             <svg width="23" height="21" viewBox="0 0 23 21" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M22.3242 1.35555H20.6327C20.2199 1.35555 19.8346 1.47081 19.4892 1.66038C19.3675 1.47748 19.1715 1.35555 18.9413 1.35555H14.2057C13.8338 1.35555 13.5294 1.66038 13.5294 2.03283C13.5294 2.40529 13.8338 2.71012 14.2057 2.71012H14.9021C14.4759 3.27881 14.2057 3.97707 14.2057 4.742V11.5158C14.2057 11.8883 13.9013 12.1931 13.5294 12.1931H11.5002C11.1283 12.1931 10.8238 11.8883 10.8238 11.5158V0.678238C10.8238 0.305784 10.5194 0.000952597 10.1475 0.000952597L3.38278 0C3.01083 0 2.70641 0.304831 2.70641 0.677286V7.45112C2.70641 7.55971 2.74065 7.66069 2.78727 7.75595C1.11676 8.84668 0 10.7299 0 12.8705V16.9353C0 17.3077 0.30442 17.6125 0.676372 17.6125H2.02914C2.02914 19.0414 2.93575 20.356 4.23429 20.8028C4.62623 20.9381 5.01913 20.999 5.41105 20.999C6.11502 20.999 6.79141 20.7894 7.37266 20.3694C8.25928 19.733 8.79296 18.7033 8.79296 17.6125H15.5645C15.5645 19.1566 16.5586 20.4845 18.0198 20.8781C18.3242 20.959 18.6353 21 18.9397 21C19.8121 21 20.6511 20.6685 21.2875 20.0512C22.1532 19.211 22.5052 17.9984 22.2274 16.8C21.9364 15.5873 20.9689 14.6186 19.7655 14.327C19.718 14.3136 19.6638 14.3136 19.6171 14.3003V5.86039C19.9282 6.009 20.2669 6.09759 20.6322 6.09759H22.3236C22.6956 6.09759 23 5.79276 23 5.4203V2.03278C23 1.66032 22.6956 1.35549 22.3236 1.35549L22.3242 1.35555ZM4.05896 6.77495V1.35555H6.0881V2.71014C6.0881 3.0826 6.39252 3.38743 6.76447 3.38743C7.13642 3.38743 7.44084 3.0826 7.44084 2.71014V1.35555H9.46998V6.77495H4.05896ZM6.58856 19.2655C6.04061 19.6579 5.35091 19.7465 4.67452 19.516C3.90967 19.2521 3.38263 18.4729 3.38263 17.6127H7.44189C7.44189 18.27 7.12415 18.8863 6.58951 19.2654L6.58856 19.2655ZM8.02981 16.2581H1.35254V12.8706C1.35254 10.2556 3.47683 8.12865 6.0881 8.12865H9.47106V11.5162C9.47106 12.6336 10.3843 13.5481 11.5002 13.5481H13.5293C14.6452 13.5481 15.5585 12.6336 15.5585 11.5162V4.74234C15.5585 3.62495 16.4717 2.71046 17.5876 2.71046H18.264V14.294C18.264 14.294 18.2231 14.3074 18.2031 14.3074C18.0947 14.334 17.9862 14.3617 17.8854 14.395C17.8511 14.4084 17.8178 14.415 17.7836 14.4293C17.6751 14.4703 17.5667 14.5169 17.4658 14.5646C17.4392 14.5779 17.405 14.5913 17.3783 14.6055C17.2765 14.6598 17.1757 14.7208 17.0805 14.7884C17.0539 14.8084 17.0263 14.8227 16.9997 14.8361C16.8779 14.917 16.7695 15.0123 16.661 15.1142C16.5868 15.1819 16.505 15.2562 16.4517 15.3238C16.3366 15.4524 16.2348 15.5876 16.1407 15.7239C16.114 15.7648 16.0931 15.8048 16.0665 15.8391C15.9989 15.9544 15.9314 16.0697 15.8771 16.1916C15.8638 16.2116 15.8505 16.2326 15.8429 16.2592H8.02978L8.02981 16.2581ZM20.9172 17.1117C21.0866 17.8366 20.8763 18.5682 20.356 19.0759C19.828 19.5836 19.1116 19.7665 18.381 19.5703C17.4744 19.3331 16.8856 18.5072 16.9198 17.5241C16.9198 17.3822 16.9465 17.2536 16.9874 17.1107C17.0749 16.7792 17.2309 16.4877 17.4678 16.2305C17.4944 16.1962 17.5287 16.1695 17.5762 16.1219C17.9482 15.7761 18.4353 15.5865 18.9499 15.5865C19.1126 15.5865 19.2886 15.6065 19.4636 15.6475C20.1809 15.8171 20.7489 16.3924 20.9249 17.1107L20.9172 17.1117ZM21.6479 4.7421H20.6328C20.0715 4.7421 19.6177 4.28866 19.6177 3.72567C19.6177 3.16363 20.0706 2.70924 20.6328 2.70924H21.6479V4.7421Z" fill="white"/>
                             </svg>
@@ -79,17 +79,17 @@
                                 <!-- RIGHT CHECK / EDIT BUTTON -->
                                 <div class="d-flex align-items-center justify-content-center gap-0">
                                     <button 
-                                        @click="selectedDeliveryMethod?.value === 'delivery' && !selectedAddress ? openAddressModal() : openDeliveryMethodModal()" 
+                                        @click="handleDeliveryMethodAction"
                                         class="btn btn-sm p-0 border-0 bg-transparent"
                                         style="line-height: 0;"
                                     >
-                                        <svg v-if="!selectedDeliveryMethod || (selectedDeliveryMethod?.value === 'delivery' && !selectedAddress)" width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <svg v-if="!selectedDeliveryMethod || (selectedDeliveryMethod?.value === 'delivery' && !hasAddressForDelivery)" width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <rect x="0.5" y="0.5" width="27" height="27" rx="13.5" fill="#E9ECEF"/>
                                             <rect x="0.5" y="0.5" width="27" height="27" rx="13.5" stroke="#DEE2E6"/>
                                             <path d="M14.4365 12.9808H17.0573V14.8672H14.4365V17.4016H12.5501V14.8672H9.92925V12.9808H12.5501V10.4032H14.4365V12.9808Z" fill="#6C757D"/>
                                         </svg>
                                     </button>
-                                    <svg v-if="selectedDeliveryMethod && !(selectedDeliveryMethod?.value === 'delivery' && !selectedAddress)" width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <svg v-if="selectedDeliveryMethod && !(selectedDeliveryMethod?.value === 'delivery' && !hasAddressForDelivery)" width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <rect width="28" height="28" rx="14" fill="var(--bg-orange)"/>
                                         <path d="M11.8656 18.775L7.19687 14.1063C6.91563 13.825 6.91563 13.3469 7.19687 13.0656L8.20937 12.0531C8.49062 11.7719 8.94062 11.7719 9.22187 12.0531L12.4 15.2031L19.15 8.45313C19.4312 8.17188 19.8812 8.17188 20.1625 8.45313L21.175 9.46563C21.4562 9.74688 21.4562 10.225 21.175 10.5063L12.9062 18.775C12.625 19.0562 12.1469 19.0562 11.8656 18.775Z" fill="white"/>
                                     </svg>
@@ -97,7 +97,7 @@
                             </div>
 
                             <div
-                                v-if="selectedDeliveryMethod?.value === 'delivery' && (selectedAddress || selectedAddressId)"
+                                v-if="selectedDeliveryMethod?.value === 'delivery' && hasAddressForDelivery"
                                 class="d-flex text-muted small mt-2"
                             >
                                 <svg width="11" height="16" viewBox="0 0 11 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -550,6 +550,9 @@
     const selectedAddress = ref(null)
     const selectedAddressId = ref(null)
     const selectedAddressSaveToAccount = ref(false)
+    const hasAddressForDelivery = computed(() => Boolean(
+        selectedAddress.value || selectedAddressId.value || userStore.hasSavedAddress,
+    ))
     const selectedDeliveryMethod = ref(null)
     const selectedPaymentMethod = ref('')
     const cashChange = ref(null)
@@ -680,6 +683,19 @@
             return
         }
         showDeliveryMethodModal.value = true
+    }
+
+    const handleDeliveryMethodAction = () => {
+        if (selectedDeliveryMethod.value?.value === 'delivery' && !selectedAddress.value) {
+            if (hasAddressForDelivery.value) {
+                requestAddressAction('view')
+            } else {
+                openAddressModal()
+            }
+            return
+        }
+
+        openDeliveryMethodModal()
     }
 
     // Função para abrir modal de seleção de pagamento
@@ -901,17 +917,27 @@
     }
 
     const restoreSelectedAddress = async () => {
-        if (selectedAddress.value || !selectedAddressId.value) return
+        if (selectedAddress.value) return
 
         try {
             const addresses = await getAddresses()
-            selectedAddress.value = addresses.find(
-                (address) => String(address.id) === String(selectedAddressId.value),
-            ) || null
+            selectedAddress.value = (
+                selectedAddressId.value
+                    ? addresses.find(
+                        (address) => String(address.id) === String(selectedAddressId.value),
+                    )
+                    : null
+            ) || addresses.find((address) => address.primary) || addresses[0] || null
 
-            if (!selectedAddress.value) {
+            if (selectedAddress.value) {
+                selectedAddressId.value = selectedAddress.value.id
+                selectedAddressSaveToAccount.value = true
+                localStorage.setItem('selectedAddressId', String(selectedAddressId.value))
+                userStore.updateUser({ hasSavedAddress: true })
+            } else {
                 selectedAddressId.value = null
                 localStorage.removeItem('selectedAddressId')
+                userStore.updateUser({ hasSavedAddress: false })
                 toast.warning('O endereço selecionado não está mais disponível.')
             }
         } catch (error) {
@@ -927,7 +953,7 @@
 
     const requestAddressAction = async (action) => {
         refreshSensitiveAccess()
-        if (!selectedAddress.value && !selectedAddressId.value) return
+        if (!selectedAddress.value && !selectedAddressId.value && !userStore.hasSavedAddress) return
 
         if (hasSensitiveAccess.value) {
             await continueAddressAction(action)
@@ -954,6 +980,7 @@
             selectedAddress.value = address.address
             selectedAddressId.value = address.addressId || null
             selectedAddressSaveToAccount.value = Boolean(address.saveToAccount)
+            if (selectedAddressId.value) userStore.updateUser({ hasSavedAddress: true })
             if (selectedAddressId.value) {
                 localStorage.setItem('selectedAddressId', String(selectedAddressId.value))
             } else {
@@ -964,6 +991,7 @@
             selectedAddress.value = address
             selectedAddressId.value = address.id || null
             selectedAddressSaveToAccount.value = Boolean(address.id)
+            if (selectedAddressId.value) userStore.updateUser({ hasSavedAddress: true })
         } else {
             selectedAddress.value = null
             selectedAddressId.value = null
@@ -1315,6 +1343,7 @@
             if (selectedDeliveryMethod.value.value === 'delivery') {
                 userStore.updateUser({
                     addressStorageEnabled: selectedAddressSaveToAccount.value,
+                    hasSavedAddress: selectedAddressSaveToAccount.value || userStore.hasSavedAddress,
                 })
             }
             selectedAddress.value = null
@@ -1491,10 +1520,10 @@
 }
 .address-redaction {
     display: inline-block;
-    width: 7rem;
+    width: 11rem;
     height: 0.75rem;
-    border-radius: 0.2rem;
-    background: #595959;
+    border-radius: 1rem;
+    background: #59595952;
 }
 .icon-address{
     background: var(--bg-orange); 

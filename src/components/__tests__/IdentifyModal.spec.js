@@ -78,6 +78,7 @@ describe('IdentifyModal', () => {
               phone: '11999999999',
               has_email: true,
               email_verified: false,
+              has_saved_address: true,
             },
           },
         },
@@ -105,6 +106,7 @@ describe('IdentifyModal', () => {
       email: 'joao@example.com',
     })
     expect(userStore.userId).toBe(8)
+    expect(userStore.hasSavedAddress).toBe(true)
   })
 
   it('shows a friendly message when the API requires an email for registration', async () => {

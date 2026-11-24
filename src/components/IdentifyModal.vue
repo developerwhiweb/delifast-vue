@@ -166,6 +166,7 @@ const login = async () => {
       hasEmail: client.has_email,
       emailVerified: client.email_verified,
       addressStorageEnabled: client.address_storage_enabled,
+      hasSavedAddress: client.has_saved_address,
       canBindEmail: client.can_bind_email,
       pathImage: client.path_image || '',
     })
@@ -177,6 +178,7 @@ const login = async () => {
       hasEmail: client.has_email,
       emailVerified: client.email_verified,
       addressStorageEnabled: client.address_storage_enabled,
+      hasSavedAddress: client.has_saved_address,
       canBindEmail: client.can_bind_email,
       pathImage: client.path_image || '',
     })

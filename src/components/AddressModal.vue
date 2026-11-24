@@ -6,7 +6,7 @@
     style="display: block; background: rgba(0,0,0,.5)"
     @click.self="close"
   >
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-dialog modal-dialog-centered modal-md">
       <div class="modal-content">
 
         <!-- HEADER -->
@@ -67,7 +67,7 @@
             </div>
 
             <div v-else class="row g-3">
-              <div class="col-md-6" v-for="addr in addresses" :key="addr.id">
+              <div class="col-12" v-for="addr in addresses" :key="addr.id">
                 <div
                   class="card address-card"
                   :class="{ selected: String(selectedId) === String(addr.id) }"
@@ -379,6 +379,7 @@
         try {
             const loadedAddresses = await getAddresses()
             addresses.value = loadedAddresses
+            userStore.updateUser({ hasSavedAddress: loadedAddresses.length > 0 })
             selectedId.value = localStorage.getItem('selectedAddressId')
 
             if (showFormWhenEmpty && loadedAddresses.length === 0) {
@@ -461,6 +462,7 @@
     const setSelectedAddress = (address, shouldNotify = true) => {
         selectedId.value = address.id
         localStorage.setItem('selectedAddressId', String(address.id))
+        userStore.updateUser({ hasSavedAddress: true })
         emit(
             'address-selected',
             props.checkoutMode
@@ -516,6 +518,7 @@
                 toast.warning('Endereço excluído, mas não foi possível atualizar a lista.')
                 return
             }
+            userStore.updateUser({ hasSavedAddress: updatedAddresses.length > 0 })
 
             if (wasSelected) {
                 const nextAddress = updatedAddresses.find((address) => address.primary)
@@ -619,7 +622,7 @@
                 if (selectedAddress) setSelectedAddress(selectedAddress, false)
             }
 
-            userStore.updateUser({ addressStorageEnabled: true })
+            userStore.updateUser({ addressStorageEnabled: true, hasSavedAddress: true })
             notifyAddressUpdate()
             showList()
             toast.success(
@@ -674,7 +677,7 @@
             }
 
             addresses.value = [address]
-            userStore.updateUser({ addressStorageEnabled: true })
+            userStore.updateUser({ addressStorageEnabled: true, hasSavedAddress: true })
             setSelectedAddress(address)
             pendingCheckoutAddress.value = null
             close()
