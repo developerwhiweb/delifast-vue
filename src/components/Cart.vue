@@ -508,6 +508,52 @@
         @payment-selected="handlePaymentMethodSelected"
     />
 
+    <div
+        v-if="showWhatsAppOrderPrompt"
+        class="modal fade show"
+        tabindex="-1"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="whatsapp-order-title"
+        style="display: block; background: rgba(0, 0, 0, .5)"
+        @click.self="closeWhatsAppOrderPrompt"
+    >
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 id="whatsapp-order-title" class="modal-title">Pedido confirmado!</h5>
+                    <button
+                        type="button"
+                        class="btn-close"
+                        aria-label="Fechar"
+                        @click="closeWhatsAppOrderPrompt"
+                    ></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">Seu pedido foi salvo no painel. Deseja também enviá-lo pelo WhatsApp?</p>
+                </div>
+                <div class="modal-footer">
+                    <button
+                        type="button"
+                        class="btn btn-outline-secondary"
+                        :disabled="isSendingToWhatsApp"
+                        @click="closeWhatsAppOrderPrompt"
+                    >
+                        Não, obrigado
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-success"
+                        :disabled="isSendingToWhatsApp"
+                        @click="sendOrderByWhatsApp"
+                    >
+                        {{ isSendingToWhatsApp ? 'Abrindo WhatsApp...' : 'Sim, enviar' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </template>
 
 <script setup>
@@ -562,6 +608,9 @@
     const appliedCoupon = ref(null)
     const couponError = ref('')
     const isValidatingCoupon = ref(false)
+    const showWhatsAppOrderPrompt = ref(false)
+    const pendingWhatsAppOrder = ref(null)
+    const isSendingToWhatsApp = ref(false)
     const couponItems = computed(() => cart.items.map(buildCouponValidationItem))
     const couponItemsSignature = computed(() => JSON.stringify(couponItems.value))
     const handleSensitiveAccessChange = async () => {
@@ -1341,9 +1390,6 @@
             })
         }
 
-        const whatsappWindow = typeof window !== 'undefined'
-            ? window.open('about:blank', '_blank')
-            : null
         try {
             const latestProducts = await refreshProductStocks(cart)
             validateCartStock(cart.items, latestProducts)
@@ -1367,33 +1413,9 @@
             toast.success('Pedido confirmado e salvo com sucesso!', {
                 timeout: 4000
             })
-
-            try {
-                const contacts = await getContacts()
-                const whatsappUrl = createOrderWhatsAppUrl(
-                    contacts[0]?.whatsapp,
-                    formatOrderWhatsAppMessage({ ...orderData, coupon: couponForWhatsApp }, savedOrder),
-                )
-
-                if (!whatsappUrl) {
-                    whatsappWindow?.close()
-                    toast.warning('Pedido salvo, mas o WhatsApp da loja não está cadastrado nos contatos.')
-                    return
-                }
-
-                if (whatsappWindow && !whatsappWindow.closed) {
-                    whatsappWindow.opener = null
-                    whatsappWindow.location.href = whatsappUrl
-                } else {
-                    window.location.assign(whatsappUrl)
-                }
-            } catch (error) {
-                whatsappWindow?.close()
-                console.error('O pedido foi salvo, mas não foi possível abrir o WhatsApp.', error)
-                toast.warning('Pedido salvo, mas não foi possível abrir o WhatsApp. Confira os contatos da loja.')
-            }
+            pendingWhatsAppOrder.value = { orderData, savedOrder, coupon: couponForWhatsApp }
+            showWhatsAppOrderPrompt.value = true
         } catch (error) {
-            whatsappWindow?.close()
             console.error('Não foi possível salvar o pedido na API.', error)
             const storeHoursError = error.response?.data?.errors?.store_hours?.[0]
             toast.error(
@@ -1404,6 +1426,50 @@
             )
         } finally {
             isSubmitting.value = false
+        }
+    }
+
+    const closeWhatsAppOrderPrompt = () => {
+        showWhatsAppOrderPrompt.value = false
+        pendingWhatsAppOrder.value = null
+    }
+
+    const sendOrderByWhatsApp = async () => {
+        if (isSendingToWhatsApp.value || !pendingWhatsAppOrder.value) return
+
+        isSendingToWhatsApp.value = true
+        let whatsappWindow = null
+
+        try {
+            whatsappWindow = window.open('about:blank', '_blank')
+            const { orderData, savedOrder, coupon } = pendingWhatsAppOrder.value
+            showWhatsAppOrderPrompt.value = false
+
+            const contacts = await getContacts()
+            const whatsappUrl = createOrderWhatsAppUrl(
+                contacts[0]?.whatsapp,
+                formatOrderWhatsAppMessage({ ...orderData, coupon }, savedOrder),
+            )
+
+            if (!whatsappUrl) {
+                whatsappWindow?.close()
+                toast.warning('Pedido salvo, mas o WhatsApp da loja não está cadastrado nos contatos.')
+                return
+            }
+
+            if (whatsappWindow && !whatsappWindow.closed) {
+                whatsappWindow.opener = null
+                whatsappWindow.location.href = whatsappUrl
+            } else {
+                window.location.assign(whatsappUrl)
+            }
+        } catch (error) {
+            whatsappWindow?.close()
+            console.error('O pedido foi salvo, mas não foi possível abrir o WhatsApp.', error)
+            toast.warning('Pedido salvo, mas não foi possível abrir o WhatsApp. Confira os contatos da loja.')
+        } finally {
+            pendingWhatsAppOrder.value = null
+            isSendingToWhatsApp.value = false
         }
     }
 
