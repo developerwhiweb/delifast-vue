@@ -564,9 +564,20 @@
     const isValidatingCoupon = ref(false)
     const couponItems = computed(() => cart.items.map(buildCouponValidationItem))
     const couponItemsSignature = computed(() => JSON.stringify(couponItems.value))
-    const handleSensitiveAccessChange = () => {
-        if (hasClientSensitiveAccess() || !selectedAddressId.value) return
-        selectedAddress.value = null
+    const handleSensitiveAccessChange = async () => {
+        if (hasClientSensitiveAccess()) {
+            if (
+                selectedDeliveryMethod.value?.value === 'delivery'
+                && hasAddressForDelivery.value
+                && !selectedAddress.value
+                && !pendingAddressAction.value
+            ) {
+                await restoreSelectedAddress()
+            }
+            return
+        }
+
+        if (selectedAddressId.value) selectedAddress.value = null
     }
 
     const normalizeDeliveryAddress = (address) => ({
