@@ -12,7 +12,7 @@
       >
         <div class="position-relative">
           <img
-            v-if="item.key === 'profile' && userStore.isLogged && hasSensitiveAccess && userAvatarUrl && !avatarImageFailed"
+            v-if="item.key === 'profile' && userStore.isLogged && userAvatarUrl && !avatarImageFailed"
             :src="userAvatarUrl"
             :alt="`Foto de perfil de ${userStore.fullName || 'Usuário'}`"
             class="profile-avatar"
@@ -51,14 +51,12 @@ import { useToast } from 'vue-toastification'
 import ProfileModal from '@/components/Profile.vue'
 import IdentifyModal from './IdentifyModal.vue'
 import { resolveApiAssetUrl } from '@/services/api'
-import { useClientSensitiveAccess } from '@/composables/useClientSensitiveAccess'
 
 const emit = defineEmits(['change', 'open-orders', 'profile-updated'])
 
 const toast = useToast()
 const cart = useCartStore()
 const userStore = useUserStore()
-const { isAuthorized: hasSensitiveAccess } = useClientSensitiveAccess()
 
 const active = ref('orders')
 const isOpeningCart = ref(false)
@@ -67,7 +65,6 @@ const showLoginModal = ref(false)
 const avatarImageFailed = ref(false)
 
 const userAvatarUrl = computed(() => {
-  if (!hasSensitiveAccess.value) return ''
   const path = typeof userStore.pathImage === 'string' ? userStore.pathImage.trim() : ''
   if (!path) return ''
 

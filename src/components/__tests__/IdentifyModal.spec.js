@@ -40,6 +40,7 @@ describe('IdentifyModal', () => {
             id: 7,
             name: 'Maria Silva',
             phone: '(11) 99999-9999',
+            path_image: 'profiles/maria.jpg',
             email: null,
           },
         },
@@ -57,6 +58,7 @@ describe('IdentifyModal', () => {
     })
     expect(userStore.isLogged).toBe(true)
     expect(userStore.userId).toBe(7)
+    expect(userStore.pathImage).toBe('profiles/maria.jpg')
     expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
   })
 
