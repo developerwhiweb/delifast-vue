@@ -14,7 +14,12 @@
           <strong>{{ destinationEmail }}</strong>.
         </template>
         <template v-else>
-          {{ codeSent ? 'O código de confirmação foi enviado para o e-mail cadastrado na sua conta.' : 'Enviaremos o código de confirmação para o e-mail cadastrado na sua conta.' }}
+          <template v-if="purpose === 'email-change'">
+            Digite o novo e-mail que deseja cadastrar.
+          </template>
+          <template v-else>
+            {{ codeSent ? 'O código de confirmação foi enviado para o e-mail cadastrado na sua conta.' : 'Enviaremos o código de confirmação para o e-mail cadastrado na sua conta.' }}
+          </template>
         </template>
       </p>
 

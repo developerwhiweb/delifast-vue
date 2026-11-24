@@ -45,4 +45,17 @@ describe('ClientVerificationPrompt', () => {
       'jo*******@e******.com',
     )
   })
+
+  it('asks for a new email when changing the account email', () => {
+    const wrapper = mount(ClientVerificationPrompt, {
+      props: {
+        modelValue: true,
+        purpose: 'email-change',
+      },
+    })
+
+    expect(wrapper.find('.verification-card').text()).toContain(
+      'Digite o novo e-mail que deseja cadastrar.',
+    )
+  })
 })
