@@ -231,16 +231,30 @@
   <div class="offcanvas-body d-flex flex-column gap-3">
 
     <!-- INFORMAÇÕES DO USUÁRIO (se logado) -->
-    <div v-if="userStore.isLogged" class="user-info-mobile p-3 d-flex justify-content-center align-items-center text-start mb-2">
-      <div class="avatar-mobile me-2">
-        <img
-          v-if="userAvatarUrl && !avatarImageFailed"
-          :src="userAvatarUrl"
-          :alt="`Foto de perfil de ${userStore.fullName || 'Usuário'}`"
-          class="avatar-mobile-image"
-          @error="handleAvatarImageError"
-        >
-        <i v-else class="bi bi-person-circle" aria-hidden="true"></i>
+    <div
+      v-if="userStore.isLogged"
+      class="user-info-mobile p-3 d-flex justify-content-center align-items-center text-start mb-2"
+      role="button"
+      tabindex="0"
+      aria-label="Abrir perfil do usuário"
+      @click="openProfileModal"
+      @keydown.enter.prevent="openProfileModal"
+      @keydown.space.prevent="openProfileModal"
+    >
+      <div class="avatar-mobile-wrapper me-2">
+        <div class="avatar-mobile">
+          <img
+            v-if="userAvatarUrl && !avatarImageFailed"
+            :src="userAvatarUrl"
+            :alt="`Foto de perfil de ${userStore.fullName || 'Usuário'}`"
+            class="avatar-mobile-image"
+            @error="handleAvatarImageError"
+          >
+          <i v-else class="bi bi-person-circle" aria-hidden="true"></i>
+        </div>
+        <span class="avatar-edit-indicator" aria-hidden="true">
+          <i class="bi bi-pencil-fill"></i>
+        </span>
       </div>
       <div class="user-details">
         <h6 class="mb-0">{{ userStore.fullName || 'Cliente' }}</h6>
@@ -992,16 +1006,46 @@
     color: #1f2937;
   }
 
-  .avatar-mobile {
+  .user-info-mobile {
+    cursor: pointer;
+  }
+
+  .user-info-mobile:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  .avatar-mobile-wrapper {
+    position: relative;
     width: 56px;
     height: 56px;
     flex: 0 0 56px;
+  }
+
+  .avatar-mobile {
+    width: 56px;
+    height: 56px;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
     border-radius: 50%;
     background: #f8f9fa;
+  }
+
+  .avatar-edit-indicator {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    display: grid;
+    width: 22px;
+    height: 22px;
+    place-items: center;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-size: 0.6rem;
   }
 
   .avatar-mobile-image {
