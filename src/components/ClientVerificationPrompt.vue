@@ -8,6 +8,15 @@
         </div>
         <button type="button" class="btn-close" aria-label="Fechar" :disabled="isLoading" @click="close"></button>
       </div>
+      <p class="small text-muted mb-3">
+        <template v-if="destinationEmail">
+          {{ codeSent ? 'O código de confirmação foi enviado para' : 'Enviaremos o código de confirmação para' }}
+          <strong>{{ destinationEmail }}</strong>.
+        </template>
+        <template v-else>
+          {{ codeSent ? 'O código de confirmação foi enviado para o e-mail cadastrado na sua conta.' : 'Enviaremos o código de confirmação para o e-mail cadastrado na sua conta.' }}
+        </template>
+      </p>
 
       <template v-if="purpose === 'sensitive'">
         <div v-if="!userStore.emailVerified" class="alert alert-warning py-2 small">
@@ -117,10 +126,56 @@ const code = ref('')
 const codeSent = ref(false)
 const isLoading = ref(false)
 const errorMessage = ref('')
+const verificationEmail = ref('')
 const emailInputRequired = computed(() => (
   props.purpose === 'email-change'
   || (props.purpose === 'email' && !userStore.emailVerified && userStore.canBindEmail)
 ))
+const maskEmail = (address) => {
+  if (!address) return ''
+  if (address.includes('*')) return address
+
+  const match = address.match(/^([^@\s]+)@([^@\s]+)$/)
+  if (!match) return ''
+
+  const [, localPart, domain] = match
+  const visibleLocalPart = localPart.length <= 2
+    ? `${localPart.slice(0, 1)}*`
+    : `${localPart.slice(0, 2)}${'*'.repeat(Math.max(2, localPart.length - 2))}`
+  const domainParts = domain.split('.')
+  const maskedDomain = domainParts
+    .map((part, index) => index === 0
+      ? `${part.slice(0, 1)}${'*'.repeat(Math.max(2, part.length - 1))}`
+      : part)
+    .join('.')
+
+  return `${visibleLocalPart}@${maskedDomain}`
+}
+
+const destinationEmail = computed(() => {
+  if (verificationEmail.value) return verificationEmail.value
+
+  const address = (
+    props.purpose === 'email-change'
+      ? email.value
+      : userStore.maskedEmail
+  ).trim()
+
+  return maskEmail(address)
+})
+
+const loadDestinationEmail = async () => {
+  if (emailInputRequired.value) return
+
+  try {
+    const response = await clientApi.getEmailVerificationDestination()
+    const payload = response.data?.data || {}
+    verificationEmail.value = payload.masked_email || ''
+    userStore.updateUser({ maskedEmail: verificationEmail.value })
+  } catch (error) {
+    console.error('Não foi possível carregar o e-mail para a confirmação.', error)
+  }
+}
 
 const getErrorMessage = (error) => {
   const validationErrors = error.response?.data?.errors
@@ -137,11 +192,20 @@ const requestCode = async () => {
 
   try {
     if (props.purpose === 'sensitive') {
-      await clientApi.requestSensitiveAccess()
+      const response = await clientApi.requestSensitiveAccess()
+      const data = response.data?.data || {}
+      verificationEmail.value = data.masked_email
+        || userStore.maskedEmail
     } else {
-      await clientApi.requestEmailVerification(
+      const response = await clientApi.requestEmailVerification(
         emailInputRequired.value ? email.value : undefined,
       )
+      const data = response.data?.data || {}
+      const address = emailInputRequired.value
+        ? email.value
+        : userStore.maskedEmail
+      verificationEmail.value = data.masked_email
+        || maskEmail(address)
     }
     codeSent.value = true
   } catch (error) {
@@ -179,6 +243,7 @@ const close = () => {
   codeSent.value = false
   errorMessage.value = ''
   isLoading.value = false
+  verificationEmail.value = ''
 }
 
 watch(() => props.modelValue, (open) => {
@@ -187,7 +252,9 @@ watch(() => props.modelValue, (open) => {
   codeSent.value = false
   errorMessage.value = ''
   email.value = ''
-})
+  verificationEmail.value = ''
+  loadDestinationEmail()
+}, { immediate: true })
 </script>
 
 <style scoped>

@@ -8,6 +8,7 @@ export const useUserStore = defineStore('user', {
     fullName: '',       // Nome completo
     whatsapp: '',       // WhatsApp para contato
     pathImage: '',
+    maskedEmail: '',
     hasEmail: false,
     emailVerified: false,
     addressStorageEnabled: false,
@@ -26,6 +27,7 @@ export const useUserStore = defineStore('user', {
       fullName: state.fullName,
       whatsapp: state.whatsapp,
       pathImage: state.pathImage,
+      maskedEmail: state.maskedEmail,
       hasEmail: state.hasEmail,
       emailVerified: state.emailVerified,
       addressStorageEnabled: state.addressStorageEnabled,
@@ -47,6 +49,7 @@ export const useUserStore = defineStore('user', {
       this.fullName = userData.fullName || ''
       this.whatsapp = userData.whatsapp || ''
       this.pathImage = userData.pathImage || userData.path_image || ''
+      this.maskedEmail = userData.maskedEmail || userData.masked_email || ''
       this.hasEmail = Boolean(userData.hasEmail ?? userData.has_email)
       this.emailVerified = Boolean(userData.emailVerified ?? userData.email_verified)
       this.addressStorageEnabled = Boolean(
@@ -72,6 +75,12 @@ export const useUserStore = defineStore('user', {
       if (Object.prototype.hasOwnProperty.call(userData, 'whatsapp')) this.whatsapp = userData.whatsapp || ''
       if (Object.prototype.hasOwnProperty.call(userData, 'pathImage')) this.pathImage = userData.pathImage || ''
       if (Object.prototype.hasOwnProperty.call(userData, 'path_image')) this.pathImage = userData.path_image || ''
+      if (Object.prototype.hasOwnProperty.call(userData, 'maskedEmail')) {
+        this.maskedEmail = userData.maskedEmail || ''
+      }
+      if (Object.prototype.hasOwnProperty.call(userData, 'masked_email')) {
+        this.maskedEmail = userData.masked_email || ''
+      }
       if (Object.prototype.hasOwnProperty.call(userData, 'hasEmail')) {
         this.hasEmail = Boolean(userData.hasEmail)
       }
@@ -119,6 +128,7 @@ export const useUserStore = defineStore('user', {
       this.fullName = ''
       this.whatsapp = ''
       this.pathImage = ''
+      this.maskedEmail = ''
       this.hasEmail = false
       this.emailVerified = false
       this.addressStorageEnabled = false
@@ -139,6 +149,7 @@ export const useUserStore = defineStore('user', {
         fullName: this.fullName,
         whatsapp: this.whatsapp,
         pathImage: this.pathImage,
+        maskedEmail: this.maskedEmail,
         hasEmail: this.hasEmail,
         emailVerified: this.emailVerified,
         addressStorageEnabled: this.addressStorageEnabled,
@@ -162,6 +173,7 @@ export const useUserStore = defineStore('user', {
           this.fullName = data.fullName || ''
           this.whatsapp = data.whatsapp || ''
           this.pathImage = data.pathImage || data.path_image || ''
+          this.maskedEmail = data.maskedEmail || data.masked_email || ''
           this.hasEmail = Boolean(data.hasEmail ?? data.has_email)
           this.emailVerified = Boolean(data.emailVerified ?? data.email_verified)
           this.addressStorageEnabled = Boolean(
@@ -210,6 +222,7 @@ export const useUserStore = defineStore('user', {
       'fullName',
       'whatsapp',
       'pathImage',
+      'maskedEmail',
       'hasEmail',
       'emailVerified',
       'addressStorageEnabled',

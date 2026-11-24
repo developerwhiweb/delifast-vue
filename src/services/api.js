@@ -154,6 +154,9 @@ export const clientApi = {
             { headers: { Authorization: `Bearer ${token}` } },
         ).finally(clearClientToken)
     },
+    getEmailVerificationDestination: () => api.get(
+        `${clientEndpoint}/email-verification/destination`,
+    ),
     requestEmailVerification: (email) => api.post(
         `${clientEndpoint}/email-verification/request`,
         email ? { email } : {},

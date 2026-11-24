@@ -1718,8 +1718,8 @@
 
 /* Botão final */
 .btn-confirm {
-  background: var(--bg-yellow) !important;
-  color: var(--text-dark) !important;
+  background: var(--primary) !important;
+  color: #FFF !important;
   border: none;
   border-radius: inherit;
   font-weight: 500;

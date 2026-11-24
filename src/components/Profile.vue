@@ -279,6 +279,7 @@ const setProfile = (client) => {
     id: client.id,
     fullName: profile.value.name,
     whatsapp: profile.value.phone,
+    maskedEmail: client.masked_email || '',
     hasEmail: profile.value.has_email,
     emailVerified: profile.value.email_verified,
     addressStorageEnabled: profile.value.address_storage_enabled,

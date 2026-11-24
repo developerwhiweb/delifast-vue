@@ -163,6 +163,7 @@ const login = async () => {
       id: client.id,
       fullName: client.name,
       whatsapp: client.phone,
+      maskedEmail: client.masked_email || '',
       hasEmail: client.has_email,
       emailVerified: client.email_verified,
       addressStorageEnabled: client.address_storage_enabled,
