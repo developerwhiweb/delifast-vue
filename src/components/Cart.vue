@@ -118,15 +118,16 @@
                                         <i class="bi bi-pencil-square me-1" aria-hidden="true"></i>Editar
                                     </button>
                                 </p>
-                                <div v-else class="address-protected d-flex align-items-center gap-2 ms-2">
+                                <div v-else class="address-protected d-flex align-items-center gap-2 ms-2 flex-wrap">
                                     <span class="address-redaction" role="img" aria-label="Endereço oculto"></span>
                                     <button
                                         type="button"
-                                        class="btn btn-sm p-0 border-0 bg-transparent text-primary"
-                                        aria-label="Visualizar endereço"
+                                        class="btn btn-sm p-0 border-0 bg-transparent text-primary d-inline-flex align-items-center text-nowrap"
+                                        aria-label="Usar endereço cadastrado"
                                         @click.stop="requestAddressAction('view')"
                                     >
-                                        <i class="bi bi-eye" aria-hidden="true"></i>
+                                        <i class="bi bi-eye me-1" aria-hidden="true"></i>
+                                        Usar endereço salvo
                                     </button>
                                     <button
                                         type="button"
@@ -530,7 +531,7 @@
                     ></button>
                 </div>
                 <div class="modal-body">
-                    <p class="mb-0">Seu pedido foi salvo no painel. Deseja também enviá-lo pelo WhatsApp?</p>
+                    <p class="mb-0">Pedido registrado com sucesso! Deseja também enviá-lo pelo WhatsApp?</p>
                 </div>
                 <div class="modal-footer">
                     <button
@@ -1171,7 +1172,9 @@
         if (!cart.items.length) return 'Adicione ao menos um item ao carrinho.'
         if (!selectedDeliveryMethod.value) return 'Selecione uma forma de entrega.'
         if (selectedDeliveryMethod.value.value === 'delivery' && !selectedAddress.value) {
-            return 'Selecione um endereço de entrega.'
+            return hasAddressForDelivery.value
+                ? 'Informe o endereço para este pedido.'
+                : 'Selecione um endereço de entrega.'
         }
         if (!selectedPaymentMethod.value) return 'Selecione uma forma de pagamento.'
         if (selectedPaymentMethod.value === 'cash' && !cashChange.value) {
@@ -1597,7 +1600,7 @@
 }
 .address-redaction {
     display: inline-block;
-    width: 11rem;
+    width: 100%;
     height: 0.75rem;
     border-radius: 1rem;
     background: #59595952;
